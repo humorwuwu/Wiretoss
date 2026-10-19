@@ -80,7 +80,11 @@ jobs:
         run: |
           $name = "wiretoss-${{ github.ref_name }}-windows-x64"
           Compress-Archive -Path "target/release/wiretoss.exe", "README.md" -DestinationPath "$name.zip"
-          (Get-FileHash "$name.zip" -Algorithm SHA256).Hash | Out-File "$name.zip.sha256"
+          # 写成标准的 "<hash>  <文件名>" 两空格格式，和 macos 那边 shasum 的输出一致，
+          # 这样任何平台上都能直接 `shasum -a 256 -c` 校验。
+          # 默认的 Out-File 只写一个裸哈希，用户没法直接拿去校验。
+          $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Out-File -Encoding ascii "$name.zip.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -91,6 +95,11 @@ jobs:
 
   release:
     needs: [macos, windows]
+    # workflow_dispatch 时 github.ref 是 refs/heads/main，不是 tag，
+    # action-gh-release 会拿 ref_name（即 "main"）当 tag 名去建 Release，
+    # 建出一个叫 main 的 tag 毫无意义。手动触发的用途本来就是「只验证打包、
+    # 不真的发版」，产物在本次 run 的 Artifacts 里下载即可，跳过发布这一步。
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -116,4 +125,10 @@ jobs:
             **Windows**：解压后双击 `wiretoss.exe`。首次运行需要允许防火墙的
             「专用网络」访问，否则对端连不上。
 
-            详见 [README](../blob/main/README.md)。
+            详见 [README](https://github.com/humorwuwu/Wiretoss/blob/main/README.md)。
+
+            每个包附同名 `.sha256` 文件，下载后可校验完整性：
+
+            ```bash
+            shasum -a 256 -c wiretoss-*.zip.sha256
+            ```

@@ -26,6 +26,12 @@ jobs:
           components: clippy, rustfmt
 
       # Linux 上 egui/winit 要链接 X11 和 Wayland，这些开发库 ubuntu runner 不自带。
+      # tray-icon 在 Linux 上走 GTK，而 gtk-sys / glib-sys / atk-sys / pango-sys /
+      # cairo-sys-rs / gdk-pixbuf-sys 这一批全靠 pkg-config 找库 —— 缺了 GTK 的话
+      # glib-sys 的 build script 会直接报 "glib-2.0 was not found" 编译失败。
+      # libgtk-3-dev 会连带拉入上面这一整串，装它一个就够。
+      # libappindicator 是运行时 dlopen 的（见 libappindicator-sys/src/lib.rs），
+      # 构建期不需要它的 -dev 包，所以这里不装。
       # macOS / Windows 用的是系统框架，不需要额外安装。
       - name: 安装 Linux 图形依赖
         if: runner.os == 'Linux'
@@ -34,7 +40,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libxkbcommon-dev libwayland-dev libx11-dev libxi-dev \
             libxcursor-dev libxrandr-dev libxinerama-dev \
-            libgl1-mesa-dev libegl1-mesa-dev
+            libgl1-mesa-dev libegl1-mesa-dev \
+            libgtk-3-dev
 
       - uses: Swatinem/rust-cache@v2
 
