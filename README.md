@@ -1,5 +1,7 @@
 # Wiretoss
 
+[![CI](https://github.com/humorwuwu/Wiretoss/actions/workflows/ci.yml/badge.svg)](https://github.com/humorwuwu/Wiretoss/actions/workflows/ci.yml)
+
 Mac ↔ Windows 局域网文件快传。**任意一端运行一个可执行文件，另一端用浏览器打开就能互传。**
 
 还可以切到**原生客户端模式**，把文件/文件夹拖进服务端窗口，像隔空投送一样直接发给指定设备，
@@ -27,9 +29,11 @@ Mac ↔ Windows 局域网文件快传。**任意一端运行一个可执行文�
 
 | 平台 | 文件 |
 |---|---|
-| macOS (Apple Silicon) | `wiretoss-*-aarch64-apple-darwin.tar.gz` |
-| macOS (Intel) | `wiretoss-*-x86_64-apple-darwin.tar.gz` |
-| Windows (x64) | `wiretoss-*-x86_64-pc-windows-msvc.zip` |
+| macOS（Apple Silicon + Intel 通用） | `wiretoss-<版本号>-macos-universal.zip` |
+| Windows (x64) | `wiretoss-<版本号>-windows-x64.zip` |
+
+macOS 那个包是 arm64 与 x86_64 用 `lipo` 合成的通用二进制，Apple Silicon 和 Intel
+机器下同一个包都能跑，不用挑架构。每个包旁边都附有同名 `.sha256` 校验和文件。
 
 或者自己编译（需要 Rust stable）：
 
@@ -286,4 +290,4 @@ scripts/       本地打包脚本（CI 的 release 流程复用 make-app.sh）
 
 ## 许可
 
-MIT，详见 [LICENSE](LICENSE)。
+MIT，详见 [LICENSE](LICENSE)。变更记录见 [CHANGELOG.md](CHANGELOG.md)。

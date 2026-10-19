@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 对端连不上 / 速度慢 / 防火墙 —— 先看常见问题
+    url: https://github.com/humorwuwu/Wiretoss/blob/main/README.md#常见问题
+    about: README 的「常见问题」一节覆盖了连不上、速度慢、端口占用等最高频的情况
+  - name: 安全说明与已知取舍
+    url: https://github.com/humorwuwu/Wiretoss/blob/main/README.md#安全说明
+    about: 明文 HTTP、密码存储方式、路径校验边界等设计取舍都写在这里

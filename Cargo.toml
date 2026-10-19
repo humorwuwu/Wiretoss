@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Mac <-> Windows 局域网文件快传，浏览器即客户端"
 license = "MIT"
+repository = "https://github.com/humorwuwu/Wiretoss"
+readme = "README.md"
+keywords = ["file-transfer", "lan", "http", "axum", "cross-platform"]
+categories = ["command-line-utilities", "web-programming::http-server"]
 
 [[bin]]
 name = "wiretoss"
