@@ -1,0 +1,87 @@
+[package]
+name = "wiretoss"
+version = "0.1.0"
+edition = "2021"
+description = "Mac <-> Windows 局域网文件快传，浏览器即客户端"
+license = "MIT"
+
+[[bin]]
+name = "wiretoss"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+axum-extra = { version = "0.12", features = ["cookie"] }
+tower = { version = "0.5", features = ["util"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.7", features = ["fs", "trace", "compression-gzip"] }
+futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+http-body = "1"
+http-body-util = "0.1"
+bytes = "1"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+# 首次运行时让用户自己设密码，输入不回显
+rpassword = "7.5"
+
+argon2 = "0.6"
+getrandom = "0.4"
+sha2 = "0.11"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
+
+directories = "6"
+mime_guess = "2"
+if-addrs = "0.15"
+hostname = "0.4"
+unicode-normalization = "0.1"
+tokio-util = { version = "0.7", features = ["compat"] }
+futures = "0.3"
+rust-embed = { version = "8", features = ["mime-guess"] }
+# 打包下载必须能流式写。zip 9 的 ZipWriter 要求 Write + Seek（它要回头补写
+# 本地文件头和中央目录），没法直接接到 HTTP 响应体上；async_zip 的
+# EntryStreamWriter 就是为这种"长度未知、只能往前写"的场景设计的。
+async_zip = { version = "0.0.19", features = ["tokio", "deflate"] }
+# local-offset 才能把日志时间戳转成本地时区；没有它只能显示 UTC，
+# 用户看到的日志时间会差好几个小时。
+time = { version = "0.3", features = ["local-offset"] }
+
+# 原生客户端模式需要向外发 HTTP 请求（登录、SSE、拉取投送文件）。
+# 关闭默认特性：服务端是纯 HTTP，不需要 TLS/HTTP2/系统代理，避免引入 OpenSSL。
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "stream"] }
+
+mdns-sd = "0.21"
+# qrcode 0.14 没有 `unicode` 特性，unicode 渲染器始终编译；
+# 关掉默认特性只是为了甩掉 image/svg/pic 这三个用不上的重依赖。
+qrcode = { version = "0.14", default-features = false }
+
+tracing = "0.1"
+# time 特性提供 OffsetTime，用来把日志时间戳按本地时区输出
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
+thiserror = "2"
+
+# ── 桌面控制面板 ──
+# 刻意用 glow（OpenGL）而不是默认的 wgpu：体积只有一半（实测 7.6MB vs 14MB），
+# 而且 OpenGL 在虚拟机、远程桌面这类没有 D3D12/Vulkan 驱动的环境里也能跑。
+# Windows 那边我没法在本机实测，选兼容性更好的那个。
+eframe = { version = "0.37", default-features = false, features = [
+    "default_fonts", "glow", "wayland", "x11", "accesskit", "clipboard", "links",
+] }
+egui = "0.37"
+rfd = "0.17"
+tray-icon = "0.26"
+muda = "0.21"
+
+[dev-dependencies]
+tempfile = "3"
+# 用另一个 zip 实现把服务端产出的包读回来。
+# 自己写的自己读会一起错，独立实现能真正验证格式是否合规。
+zip = "9"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

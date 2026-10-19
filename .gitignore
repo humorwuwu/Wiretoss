@@ -1,0 +1,20 @@
+# ── 构建产物 ──
+# /target 是本机 cargo 的输出；/dist 是 scripts/package.sh 打出来的发布包。
+# 发布包走 GitHub Releases（.github/workflows/release.yml），不进版本库。
+/target
+/dist/
+**/*.rs.bk
+
+# ── 系统垃圾文件 ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 编辑器 / IDE ──
+.idea/
+.vscode/
+*.swp
+*~
+
+# 上传中转目录（运行时生成，绝不能进版本库）
+.wiretoss/

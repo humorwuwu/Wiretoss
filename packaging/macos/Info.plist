@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS .app 的描述文件。没有它的话，从 Finder 双击会打开一个终端窗口，
+  而且程序在 Dock 里没有名字、没有图标、也没法固定。
+
+  __VERSION__ 由 scripts/package.sh 在打包时替换。
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Wiretoss</string>
+    <key>CFBundleDisplayName</key>
+    <string>Wiretoss</string>
+    <key>CFBundleIdentifier</key>
+    <string>dev.wiretoss.app</string>
+    <key>CFBundleExecutable</key>
+    <string>wiretoss</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <!-- 显示在 Dock 里（而不是只做菜单栏程序），这样用户随时能找到窗口。
+         关掉窗口只是隐藏，服务继续跑，从菜单栏图标或 Dock 都能叫回来。 -->
+    <key>LSUIElement</key>
+    <false/>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>MIT License</string>
+</dict>
+</plist>

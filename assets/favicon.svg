@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <!-- 和 App 图标同一套配色，标签页里和 Dock 里是同一个蓝。 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b8df6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 标签页图标只有 16px 上下，所以这里是 App 图标的简化版：
+     去掉柔光，笔画相对加粗，圆角也收小一点，避免缩下去糊成一团。 -->
+  <rect x="0" y="0" width="24" height="24" rx="5.5" fill="url(#bg)"/>
+
+  <path d="M5 8.5 H13.6" stroke="#ffffff" stroke-width="2.7"
+        stroke-linecap="round" fill="none"/>
+  <path d="M18.6 8.5 L14 5.5 L14 11.5 Z" fill="#ffffff"/>
+
+  <!-- 透明度加在 <g> 上：逐条 path 加会让箭杆与箭头的重叠处合成两次。 -->
+  <g opacity="0.72">
+    <path d="M19 15.5 H10.4" stroke="#ffffff" stroke-width="2.7"
+          stroke-linecap="round" fill="none"/>
+    <path d="M5.4 15.5 L10 12.5 L10 18.5 Z" fill="#ffffff"/>
+  </g>
+</svg>

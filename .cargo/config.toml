@@ -1,0 +1,11 @@
+# 在 macOS/Linux 上交叉编译 Windows 版本所需的链接器。
+#
+# 需要先装 mingw-w64（macOS 上 `brew install mingw-w64`）和对应的 Rust 目标：
+#   rustup target add x86_64-pc-windows-gnu
+# 然后：
+#   cargo build --release --target x86_64-pc-windows-gnu
+#
+# 只对这一个 target 生效，不影响本机和其他平台的构建。
+# Windows 上原生编译（msvc）走的是 CI 里的路径，与此无关。
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- 主色沿用 Web UI 的强调色 #2563eb，深浅两端各拉开一点，
+         小尺寸下才有立体感；纯色块在 16px 时看着是平的。
+         注意：XML 注释里不能出现连续两个减号，所以这里不写 CSS 变量名。 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b8df6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+
+    <!-- 左上角一层柔光，让方块不像一张贴纸。 -->
+    <radialGradient id="sheen" cx="0.3" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- macOS 图标网格：圆角方块占 824x824，居中留出边距 -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#sheen)"/>
+
+  <!-- 两个箭头关于方块中心 (512,512) 中心对称，整体占满方块约 2/3。
+
+       箭杆用描边（圆头），箭头用填充三角形。不整条描边是因为 68 宽的
+       笔画配上 round linejoin，90° 的箭头尖会被磨成一个圆疙瘩，
+       缩小后看着像逗号而不是箭头。 -->
+  <path d="M270 360 H630" stroke="#ffffff" stroke-width="68"
+        stroke-linecap="round" fill="none"/>
+  <path d="M716 360 L592 276 L592 444 Z" fill="#ffffff"/>
+
+  <!-- 下：向左，收进来。降一点透明度是为了分出主次：
+       发出去是主动作，收进来是回应。
+
+       透明度必须加在 <g> 的 opacity 上，不能写成 stroke-opacity /
+       fill-opacity —— 后两者是逐条 path 生效的，箭杆和箭头重叠的那块
+       会被合成两次，出现一个比别处更白的三角。组 opacity 会先把整组
+       画到离屏缓冲、再整体合成，才不会露馅。 -->
+  <g opacity="0.72">
+    <path d="M754 664 H394" stroke="#ffffff" stroke-width="68"
+          stroke-linecap="round" fill="none"/>
+    <path d="M308 664 L432 748 L432 580 Z" fill="#ffffff"/>
+  </g>
+</svg>

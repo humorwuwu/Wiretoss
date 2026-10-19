@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # 手动触发，用来验证打包流程而不必真的发版
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # macOS 单独一个 job：要同时编两个架构再用 lipo 合成通用二进制，
+  # 装进 .app 包，这和"一个 target 一个产物"的通用矩阵对不上。
+  macos:
+    name: macOS universal
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-universal
+
+      # 先跑测试再打包：CI 绿了才说明这个平台上的产物是真能用的。
+      # 注意跑的是 runner 的原生架构（arm64），x86_64 那份只保证能编译。
+      - name: 测试
+        run: cargo test --all-targets
+
+      - name: 构建两个架构
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+
+      - name: 组装 .app 并压缩
+        run: |
+          ./scripts/make-app.sh Wiretoss.app \
+            target/aarch64-apple-darwin/release/wiretoss \
+            target/x86_64-apple-darwin/release/wiretoss
+          ditto -c -k --sequesterRsrc --keepParent Wiretoss.app \
+            "wiretoss-${{ github.ref_name }}-macos-universal.zip"
+
+      - name: 校验和
+        run: shasum -a 256 wiretoss-*.zip > "wiretoss-${{ github.ref_name }}-macos-universal.zip.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: |
+            wiretoss-*.zip
+            wiretoss-*.sha256
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-x64
+
+      - name: 测试
+        run: cargo test --all-targets
+
+      - name: 构建
+        run: cargo build --release --locked
+
+      - name: 打包
+        shell: pwsh
+        run: |
+          $name = "wiretoss-${{ github.ref_name }}-windows-x64"
+          Compress-Archive -Path "target/release/wiretoss.exe", "README.md" -DestinationPath "$name.zip"
+          (Get-FileHash "$name.zip" -Algorithm SHA256).Hash | Out-File "$name.zip.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            wiretoss-*.zip
+            wiretoss-*.sha256
+
+  release:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## 下载
+
+            | 平台 | 文件 |
+            |---|---|
+            | macOS（Apple Silicon + Intel 通用） | `wiretoss-${{ github.ref_name }}-macos-universal.zip` |
+            | Windows (x64) | `wiretoss-${{ github.ref_name }}-windows-x64.zip` |
+
+            **macOS**：解压后双击 `Wiretoss.app`。首次打开会被 Gatekeeper 拦下
+            （应用没有 Apple 开发者签名），右键点图标选「打开」即可放行一次。
+
+            **Windows**：解压后双击 `wiretoss.exe`。首次运行需要允许防火墙的
+            「专用网络」访问，否则对端连不上。
+
+            详见 [README](../blob/main/README.md)。

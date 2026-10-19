@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Wiretoss</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ───────────────────────────── 登录 ───────────────────────────── -->
+<section id="login-view" class="login" hidden>
+  <form id="login-form" class="login-card" autocomplete="on">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M9 3l4 4-4 4M20 17h-9M15 21l-4-4 4-4"/></svg>
+      <h1>Wiretoss</h1>
+    </div>
+    <p class="login-sub">局域网文件快传</p>
+
+    <label class="field">
+      <span>用户名</span>
+      <input id="login-user" name="username" autocomplete="username" required autofocus>
+    </label>
+    <label class="field">
+      <span>密码</span>
+      <input id="login-pass" name="password" type="password" autocomplete="current-password" required>
+    </label>
+
+    <p id="login-error" class="login-error" role="alert" hidden></p>
+
+    <button id="login-submit" class="btn btn-primary btn-block" type="submit">登录</button>
+    <p class="login-hint">密码在服务端启动时于终端打印。</p>
+  </form>
+</section>
+
+<!-- ───────────────────────────── 主界面 ───────────────────────────── -->
+<section id="app-view" class="app" hidden>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">Wiretoss</span>
+      <nav id="crumbs" class="crumbs" aria-label="路径"></nav>
+    </div>
+    <div class="topbar-right">
+      <span id="user-label" class="user-label"></span>
+      <button id="logout-btn" class="btn btn-ghost btn-sm" type="button">退出</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button id="upload-files" class="btn btn-primary btn-sm" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+      上传文件
+    </button>
+    <button id="upload-folder" class="btn btn-sm" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      上传文件夹
+    </button>
+    <button id="mkdir-btn" class="btn btn-sm" type="button">新建文件夹</button>
+
+    <span class="toolbar-gap"></span>
+
+    <button id="download-btn" class="btn btn-sm" type="button" disabled>下载所选</button>
+    <button id="delete-btn" class="btn btn-sm btn-danger" type="button" disabled>删除</button>
+
+    <input id="file-input" type="file" multiple hidden>
+    <input id="dir-input" type="file" webkitdirectory directory multiple hidden>
+  </div>
+
+  <div id="list-wrap" class="list-wrap">
+    <table class="filelist">
+      <thead>
+        <tr>
+          <th class="col-check"><input id="check-all" type="checkbox" aria-label="全选"></th>
+          <th class="col-name" data-sort="name" aria-sort="ascending">名称</th>
+          <th class="col-size" data-sort="size">大小</th>
+          <th class="col-time" data-sort="mtime">修改时间</th>
+          <th class="col-act"></th>
+        </tr>
+      </thead>
+      <tbody id="file-tbody"></tbody>
+    </table>
+    <p id="empty-hint" class="empty-hint" hidden>这个文件夹是空的 —— 把文件拖进来即可上传。</p>
+  </div>
+
+  <!-- 拖拽上传遮罩 -->
+  <div id="drop-overlay" class="drop-overlay" hidden>
+    <div class="drop-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+      <p>松开即可上传到当前文件夹</p>
+    </div>
+  </div>
+
+  <!-- 传输面板 -->
+  <aside id="transfers" class="transfers" hidden>
+    <header class="transfers-head">
+      <span id="transfers-title">传输中</span>
+      <button id="transfers-toggle" class="btn btn-ghost btn-sm" type="button">收起</button>
+    </header>
+    <ul id="transfer-list" class="transfer-list"></ul>
+  </aside>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</section>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
