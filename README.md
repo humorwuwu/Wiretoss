@@ -239,7 +239,7 @@ cargo run               # 带图形界面运行
 cargo run -- --headless # 不带界面运行
 cargo clippy --all-targets
 
-# 在 macOS 上打出两个平台的可分发产物到 dist/
+# 在 macOS 上打出两个平台的可分发产物到 release/macos/ 与 release/windows/
 ./scripts/package.sh
 ```
 

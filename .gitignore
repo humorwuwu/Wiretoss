@@ -1,8 +1,9 @@
 # ── 构建产物 ──
-# /target 是本机 cargo 的输出；/dist 是 scripts/package.sh 打出来的发布包。
-# 发布包走 GitHub Releases（.github/workflows/release.yml），不进版本库。
+# /target 是本机 cargo 的输出。/release 是 scripts/package.sh 打出来的发布包。
+# /dist 是旧路径，不要再往里放东西。发布包走 GitHub Releases，不进版本库。
 /target
 /dist/
+/release/
 **/*.rs.bk
 
 # ── 系统垃圾文件 ──
