@@ -5,6 +5,9 @@
 
 *.sh text eol=lf
 
+# Windows 批处理保持 CRLF：cmd.exe 解析 goto/label 时对 LF 结尾并不可靠。
+*.bat text eol=crlf
+
 # 二进制资源：不做换行转换，也不要在 diff / merge 里当文本处理
 *.png binary
 *.ico binary

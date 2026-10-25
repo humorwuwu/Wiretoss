@@ -107,7 +107,11 @@ async fn run(args: Args) -> AppResult<()> {
         cfg.port = port;
     }
 
+    let https = cfg.https;
+    let https_port = cfg.https_port;
     let state = AppState::new(cfg.clone())?;
+    // 共享目录的外部变化（Finder、资源管理器、其他程序）也要让网页自动刷新。
+    let _watch = wiretoss::watch::spawn(state.clone());
 
     let addr: SocketAddr = format!("{}:{}", args.bind, cfg.port)
         .parse()
@@ -125,6 +129,17 @@ async fn run(args: Args) -> AppResult<()> {
     };
 
     print_banner(&cfg, actual_port, shown_password.as_deref(), args.no_qr);
+    if https {
+        println!();
+        println!("  HTTPS（桌面浏览器保存到本机目录）");
+        for ip in net::lan_ipv4_addresses() {
+            println!("    https://{ip}:{https_port}");
+        }
+        println!("    https://localhost:{https_port}");
+        if let Ok(ca) = wiretoss::tls::ca_path() {
+            println!("  CA 证书  {}", ca.display());
+        }
+    }
 
     // 后台定期回收：会话、下载券、以及被放弃的上传（连同它占的中转磁盘）。
     // 这是一个可能连续跑好几天的常驻服务，只在启动时清理是不够的。
@@ -140,12 +155,45 @@ async fn run(args: Args) -> AppResult<()> {
         });
     }
 
-    axum::serve(
-        listener,
-        router::build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await
-    .map_err(|e| AppError::Internal(e.to_string()))?;
+    let app = router::build_router(state);
+
+    if https {
+        if https_port == 0 || https_port == actual_port {
+            return Err(AppError::BadRequest(
+                "HTTPS 端口无效：不能为 0，也不能和 HTTP 端口相同".into(),
+            ));
+        }
+        let tls_paths = wiretoss::tls::ensure()?;
+        wiretoss::tls::install_crypto_provider();
+        let tls_config =
+            axum_server::tls_rustls::RustlsConfig::from_pem_file(&tls_paths.cert, &tls_paths.key)
+                .await
+                .map_err(|e| AppError::Internal(format!("加载 HTTPS 证书失败：{e}")))?;
+
+        let https_addr: SocketAddr = format!("{}:{}", args.bind, https_port)
+            .parse()
+            .map_err(|_| AppError::BadRequest("HTTPS 监听地址无效".into()))?;
+
+        let http_server = axum::serve(
+            listener,
+            app.clone()
+                .into_make_service_with_connect_info::<SocketAddr>(),
+        );
+        let https_server = axum_server::bind_rustls(https_addr, tls_config)
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>());
+
+        tokio::select! {
+            result = http_server => result.map_err(|e| AppError::Internal(e.to_string()))?,
+            result = https_server => result.map_err(|e| AppError::Internal(e.to_string()))?,
+        }
+    } else {
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    }
 
     Ok(())
 }

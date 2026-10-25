@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.Wiretoss" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/wt_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/wt_accent</item>
+        <item name="android:windowSplashScreenBackground">@color/wt_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/wt_background</item>
+    </style>
+</resources>

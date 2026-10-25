@@ -89,6 +89,16 @@ pub struct Config {
     pub root: PathBuf,
     pub port: u16,
     pub session_hours: u64,
+    /// 允许没有会话的访客只读浏览/下载。上传、删除、投送等写操作仍需登录。
+    /// 旧配置文件没有这个字段时默认关闭。
+    #[serde(default)]
+    pub allow_guest: bool,
+    /// 是否同时开一个 HTTPS 监听。桌面浏览器要调用 File System Access API
+    /// 写本机目录，必须处于安全上下文；HTTP 监听仍然保留给手机。
+    #[serde(default)]
+    pub https: bool,
+    #[serde(default = "default_https_port")]
+    pub https_port: u16,
     /// 客户端模式设置。字段级 default 保证旧配置可读。
     #[serde(default)]
     pub client: ClientSettings,
@@ -98,6 +108,11 @@ pub struct Config {
 
 /// 默认用户名。首次运行没指定就用它。
 pub const DEFAULT_USERNAME: &str = "wiretoss";
+pub const DEFAULT_HTTPS_PORT: u16 = 8443;
+
+fn default_https_port() -> u16 {
+    DEFAULT_HTTPS_PORT
+}
 
 impl Config {
     /// 配置是否已存在。用来区分"首次运行"和"改设置"两条完全不同的路径：
@@ -134,6 +149,9 @@ impl Config {
             session_hours: 12,
             client: ClientSettings::new(),
             start_mode: StartMode::Server,
+            allow_guest: false,
+            https: false,
+            https_port: DEFAULT_HTTPS_PORT,
         };
         cfg.save()?;
         Ok(cfg)
@@ -155,6 +173,9 @@ impl Config {
             session_hours: 12,
             client: ClientSettings::new(),
             start_mode: StartMode::Server,
+            allow_guest: false,
+            https: false,
+            https_port: DEFAULT_HTTPS_PORT,
         };
         cfg.save()?;
         Ok(cfg)
@@ -227,6 +248,12 @@ pub fn config_path() -> AppResult<PathBuf> {
     Ok(config_dir()?.join("config.json"))
 }
 
+/// HTTPS 的 CA / 服务器证书目录。证书和私钥属于敏感文件，不要提交，
+/// 也不要在阶段清理时删除（见 AGENTS.md 的红线）。
+pub fn certs_dir() -> AppResult<PathBuf> {
+    Ok(config_dir()?.join("certs"))
+}
+
 /// 默认共享目录：`~/Wiretoss`。两端保持同名，用户心智负担最小。
 pub fn default_root() -> AppResult<PathBuf> {
     let base = BaseDirs::new().ok_or_else(|| AppError::Internal("无法定位用户主目录".into()))?;
@@ -277,6 +304,9 @@ mod tests {
             session_hours: 12,
             client: ClientSettings::default(),
             start_mode: StartMode::Server,
+            allow_guest: false,
+            https: false,
+            https_port: DEFAULT_HTTPS_PORT,
         };
         assert!(cfg.verify_password("correct horse battery staple"));
         assert!(!cfg.verify_password("wrong"));
@@ -305,6 +335,9 @@ mod tests {
             session_hours: 12,
             client: ClientSettings::default(),
             start_mode: StartMode::Server,
+            allow_guest: false,
+            https: false,
+            https_port: DEFAULT_HTTPS_PORT,
         };
         assert!(!cfg.verify_password(""));
         assert!(!cfg.verify_password("anything"));

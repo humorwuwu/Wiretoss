@@ -1,0 +1,6 @@
+<resources>
+    <color name="wt_background">#0B1020</color>
+    <color name="wt_background_deep">#070A15</color>
+    <color name="wt_accent">#5B8CFF</color>
+    <color name="wt_icon_background">#0B1020</color>
+</resources>

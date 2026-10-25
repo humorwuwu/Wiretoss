@@ -7,6 +7,40 @@
 
 ## [未发布]
 
+暂无。
+
+## [0.2.0] - 2026-10-25
+
+### 变更
+
+- 浏览器端和桌面控制面板统一重做为深色玻璃风格：蓝紫强调色、半透明卡片、细描边和更大留白
+- 桌面控制面板改为左右两栏，窗口变窄时自动堆叠成一栏
+- 浏览器端新增移动布局：窄屏卡片列表、底部操作栏、选择栏、刘海屏安全区和触控尺寸适配
+- 新增 PWA manifest、主屏图标和深色主题色，iOS / Android 可添加到主屏幕
+- 文件列表按类型显示不同图标；删除和新建文件夹改用自绘对话框
+- 新增 iOS / Android 原生客户端：扫码连接、mDNS 自动发现、常用服务器、系统下载与分享
+- iPad 和 ≥720dp 的 Android 平板使用双栏设置页；手机保持单栏
+- iOS 提供 XcodeGen 工程、模拟器端到端测试和 `scripts/ios-export.sh`
+- Android 提供 Compose 工程、签名脚本，产物为 APK + AAB
+- 新增 `docs/mobile-store.md` 与隐私政策模板，补齐上架、签名和审核说明
+- 共享目录外部变化实时刷新：Finder / 资源管理器或其它程序改动目录后，
+  已打开的网页会通过 SSE 自动刷新；350ms 合并事件，忽略上传中转目录
+- 新增无账号只读模式：访客可浏览、下载、打包下载和保存到本机；上传、删除、
+  新建、投送仍需登录，服务端用 WriteUser 提取器强制校验
+- 新增可选 HTTPS：自签本地 CA + 按当前局域网 IP 重新签发的服务器证书；
+  HTTP 继续保留给手机和原生客户端
+- 新增“保存到本机目录”：桌面 Chrome/Edge 在 HTTPS 下选择本地默认目录，
+  保留服务器目录结构；同名文件夹合并覆盖、删除同名项后完整复制，均有确认弹窗；
+  只读访客同样可用
+- 新增 `/api/tree` 递归目录接口；下载响应改为 no-store，避免覆盖保存时读到浏览器缓存
+- 新增 `docs/https-local-save.md`：CA 信任、保存目录和只读模式的完整说明
+
+### 修复
+
+- macOS 上 Dock 图标与 Finder 里显示的 AppIcon 不一致：eframe 默认会用 egui
+  自带图标覆盖 bundle 图标，现在让 macOS 使用 bundle 里的 AppIcon.icns，
+  Windows / Linux 则改用随包内置的同一张图标
+
 ## [0.1.0] - 2026-10-19
 
 首个版本。
@@ -36,5 +70,6 @@
 - 仅支持 HTTP，不支持 HTTPS
 - Windows 上 release 版编译为无控制台的 GUI 程序，`--headless` 不会打印到终端
 
-[未发布]: https://github.com/humorwuwu/Wiretoss/compare/v0.1.0...HEAD
+[未发布]: https://github.com/humorwuwu/Wiretoss/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/humorwuwu/Wiretoss/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/humorwuwu/Wiretoss/releases/tag/v0.1.0

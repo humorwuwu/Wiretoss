@@ -20,7 +20,7 @@ use tower::ServiceExt;
 use tower_http::services::ServeFile;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::auth::{require_csrf, AuthUser};
+use crate::auth::{require_csrf, WriteUser};
 use crate::clients::{parse_client_id, send_notice, PushNotice, SendError};
 use crate::error::{AppError, AppResult};
 use crate::events::TransferEvent;
@@ -451,7 +451,7 @@ fn take_batch_for_client<'a>(
 
 pub async fn manifest(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath(batch): AxumPath<String>,
 ) -> AppResult<Response> {
@@ -497,7 +497,7 @@ pub async fn manifest(
 
 pub async fn file(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath((batch, index)): AxumPath<(String, usize)>,
     req: Request,
@@ -539,7 +539,7 @@ pub struct ProgressRequest {
 
 pub async fn progress(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath(batch): AxumPath<String>,
     Json(req): Json<ProgressRequest>,
@@ -575,7 +575,7 @@ pub struct CompleteRequest {
 
 pub async fn complete(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath(batch): AxumPath<String>,
     Json(req): Json<CompleteRequest>,
@@ -626,7 +626,7 @@ pub async fn complete(
 
 pub async fn pending(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
 ) -> AppResult<Json<Value>> {
     let client_id = parse_client_id(&headers)?;

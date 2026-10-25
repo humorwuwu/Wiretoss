@@ -53,6 +53,10 @@ impl TestServer {
 }
 
 async fn start() -> TestServer {
+    start_with_guest(false).await
+}
+
+async fn start_with_guest(allow_guest: bool) -> TestServer {
     let root = tempfile::tempdir().unwrap();
     let cfg = Config {
         version: 1,
@@ -63,6 +67,9 @@ async fn start() -> TestServer {
         session_hours: 12,
         client: wiretoss::config::ClientSettings::default(),
         start_mode: wiretoss::config::StartMode::Server,
+        allow_guest,
+        https: false,
+        https_port: wiretoss::config::DEFAULT_HTTPS_PORT,
     };
     let state = AppState::new(cfg).unwrap();
 
@@ -134,6 +141,84 @@ async fn unauthenticated_requests_are_rejected() {
 // 跑一个单线程 runtime，服务端任务和测试任务抢同一个执行器，
 // 偶发会出现连接被接受却没有响应（客户端报 IncompleteMessage）。
 // 生产环境跑的就是多线程运行时，测试也应该对齐。
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn guest_can_read_but_not_write() {
+    let s = start_with_guest(true).await;
+
+    let me: serde_json::Value = s
+        .client
+        .get(s.url("/api/me"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(me["username"], "guest");
+    assert_eq!(me["canWrite"], false);
+    assert_eq!(me["allowGuest"], true);
+    assert_eq!(me["canLogin"], true);
+
+    // 读接口对访客开放。
+    assert_eq!(
+        s.client
+            .get(s.url("/api/list"))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        200
+    );
+
+    // 写接口即使带了 CSRF 头也必须 403，不能只靠前端隐藏按钮。
+    let mkdir = s
+        .client
+        .post(s.url("/api/mkdir"))
+        .header("X-Wiretoss", "1")
+        .json(&json!({ "dir": "", "name": "guest-dir" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(mkdir.status(), 403);
+
+    let upload = s
+        .client
+        .post(s.url("/api/upload/init"))
+        .header("X-Wiretoss", "1")
+        .json(&json!({
+            "name": "guest.txt",
+            "size": 4,
+            "last_modified": 0,
+            "dir": ""
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(upload.status(), 403);
+
+    // 登录之后同一个客户端恢复写权限。
+    assert_eq!(s.login().await, 200);
+    let me: serde_json::Value = s
+        .client
+        .get(s.url("/api/me"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(me["canWrite"], true);
+    let mkdir = s
+        .client
+        .post(s.url("/api/mkdir"))
+        .header("X-Wiretoss", "1")
+        .json(&json!({ "dir": "", "name": "member-dir" }))
+        .send()
+        .await
+        .unwrap();
+    assert!(mkdir.status().is_success());
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn login_rejects_wrong_password() {
     let s = start().await;
@@ -849,6 +934,45 @@ async fn zip_excludes_symlinks_pointing_outside_root() {
 }
 
 // ─────────────────────────────── 目录操作 ───────────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn tree_api_keeps_directory_structure() {
+    let s = start().await;
+    s.login().await;
+
+    std::fs::create_dir_all(s.path("照片/2024")).unwrap();
+    std::fs::write(s.path("照片/海边.jpg"), b"img").unwrap();
+    std::fs::write(s.path("照片/2024/说明.txt"), b"nested").unwrap();
+
+    let tree: serde_json::Value = s
+        .client
+        .get(s.url("/api/tree"))
+        .query(&[("path", "照片")])
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    assert_eq!(tree["path"], "照片");
+    let entries = tree["entries"].as_array().unwrap();
+    let dir = entries
+        .iter()
+        .find(|entry| entry["name"] == "2024")
+        .expect("缺少子目录");
+    assert_eq!(dir["is_dir"], true);
+    assert_eq!(dir["path"], "照片/2024");
+    assert_eq!(dir["children"][0]["display_name"], "说明.txt");
+    assert_eq!(dir["children"][0]["path"], "照片/2024/说明.txt");
+
+    let file = entries
+        .iter()
+        .find(|entry| entry["name"] == "海边.jpg")
+        .expect("缺少文件");
+    assert_eq!(file["is_dir"], false);
+    assert_eq!(file["size"], 3);
+}
 
 // 用多线程运行时：默认的 current-thread 运行时下，19 个测试各自在一条线程上
 // 跑一个单线程 runtime，服务端任务和测试任务抢同一个执行器，

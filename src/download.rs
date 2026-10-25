@@ -8,7 +8,7 @@ use async_zip::base::write::ZipFileWriter;
 use async_zip::{Compression, ZipDateTime, ZipDateTimeBuilder, ZipEntryBuilder};
 use axum::body::Body;
 use axum::extract::{Path as AxumPath, Query, Request, State};
-use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use axum::http::header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_TYPE};
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -78,6 +78,11 @@ pub async fn download_file(
             CONTENT_DISPOSITION,
             HeaderValue::from_str(&content_disposition(&name)).map_err(AppError::internal)?,
         );
+        // 文件可能在服务端被外部程序替换；浏览器缓存会让“保存到本机”
+        // 读到旧内容，所以下载响应不缓存。
+        response
+            .headers_mut()
+            .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
         Ok(response)
     } else {
         Ok(response)
@@ -196,6 +201,9 @@ pub async fn download_zip(
         CONTENT_DISPOSITION,
         HeaderValue::from_str(&content_disposition(&name)).map_err(AppError::internal)?,
     );
+    response
+        .headers_mut()
+        .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
     Ok(response)
 }
 

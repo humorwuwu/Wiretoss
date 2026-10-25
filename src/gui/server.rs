@@ -46,6 +46,8 @@ pub enum ServerEvent {
         port: u16,
         /// 已经拼好的可访问地址，第一项是局域网地址（对端该用的那个）。
         urls: Vec<String>,
+        /// HTTPS 地址；为空表示没有启用 HTTPS。
+        https_urls: Vec<String>,
         mdns_ok: bool,
     },
     Stopped,
@@ -141,8 +143,13 @@ struct RunningServer {
     shutdown: oneshot::Sender<()>,
     serving: JoinHandle<()>,
     maintenance: JoinHandle<()>,
+    /// 共享目录监视任务；停止服务时必须 abort，否则它会继续持有旧 AppState。
+    watch: Option<JoinHandle<()>>,
     port: u16,
     urls: Vec<String>,
+    https_urls: Vec<String>,
+    https_shutdown: Option<axum_server::Handle<SocketAddr>>,
+    https_serving: Option<JoinHandle<()>>,
     mdns_ok: bool,
     mdns: Option<mdns_sd::ServiceDaemon>,
     state: Arc<AppState>,
@@ -175,6 +182,7 @@ async fn server_loop(cmd_rx: &mut tokio_mpsc::UnboundedReceiver<ServerCommand>, 
                         bridge.send(ServerEvent::Started {
                             port: server.port,
                             urls: server.urls.clone(),
+                            https_urls: server.https_urls.clone(),
                             mdns_ok: server.mdns_ok,
                         });
                         running = Some(server);
@@ -220,6 +228,9 @@ async fn shutdown_server(server: RunningServer) {
         shutdown,
         mut serving,
         maintenance,
+        watch,
+        https_shutdown,
+        https_serving,
         mdns,
         ..
     } = server;
@@ -237,6 +248,24 @@ async fn shutdown_server(server: RunningServer) {
 
     maintenance.abort();
     let _ = maintenance.await;
+    if let Some(watch) = watch {
+        watch.abort();
+        let _ = watch.await;
+    }
+    if let Some(handle) = https_shutdown {
+        handle.graceful_shutdown(Some(Duration::from_secs(3)));
+    }
+    if let Some(mut https) = https_serving {
+        if !https.is_finished()
+            && tokio::time::timeout(Duration::from_secs(3), &mut https)
+                .await
+                .is_err()
+        {
+            tracing::warn!("HTTPS 服务未在 3 秒内退出，强制中止");
+            https.abort();
+            let _ = https.await;
+        }
+    }
     // drop 即注销 mDNS 广播。
     if mdns.is_some() {
         tracing::info!("已停止 mDNS 广播");
@@ -333,13 +362,54 @@ async fn start_server(settings: ServerSettings, bridge: &Bridge) -> Result<Runni
     };
     let mdns_ok = mdns.is_some();
     let urls = access_urls(port);
+    let watch = crate::watch::spawn(state.clone());
+
+    let mut https_urls = Vec::new();
+    let mut https_shutdown = None;
+    let mut https_serving = None;
+    if settings.config.https {
+        let https_port = settings.config.https_port;
+        if https_port == 0 || https_port == port {
+            return Err("HTTPS 端口无效：不能为 0，也不能和 HTTP 端口相同".into());
+        }
+        let tls_paths = crate::tls::ensure().map_err(|e| format!("初始化 HTTPS 失败：{e}"))?;
+        crate::tls::install_crypto_provider();
+        let tls_config =
+            axum_server::tls_rustls::RustlsConfig::from_pem_file(&tls_paths.cert, &tls_paths.key)
+                .await
+                .map_err(|e| format!("加载 HTTPS 证书失败：{e}"))?;
+        let https_addr: SocketAddr = format!("{}:{}", settings.bind, https_port)
+            .parse()
+            .map_err(|_| "HTTPS 监听地址无效".to_string())?;
+
+        let https_app = router::build_router(state.clone());
+        let handle = axum_server::Handle::new();
+        let shutdown_handle = handle.clone();
+        let https_bridge = bridge.clone();
+        let https_task = tokio::spawn(async move {
+            let result = axum_server::bind_rustls(https_addr, tls_config)
+                .handle(handle)
+                .serve(https_app.into_make_service_with_connect_info::<SocketAddr>())
+                .await;
+            if let Err(e) = result {
+                https_bridge.send(ServerEvent::Failed(format!("HTTPS 服务异常退出：{e}")));
+            }
+        });
+        https_urls = https_access_urls(https_port);
+        https_shutdown = Some(shutdown_handle);
+        https_serving = Some(https_task);
+    }
 
     Ok(RunningServer {
         shutdown: sd_tx,
         serving: handle,
         maintenance,
+        watch,
         port,
         urls,
+        https_urls,
+        https_shutdown,
+        https_serving,
         mdns_ok,
         mdns,
         state,
@@ -353,5 +423,14 @@ pub fn access_urls(port: u16) -> Vec<String> {
         urls.push(format!("http://{ip}:{port}"));
     }
     urls.push(format!("http://{}.local:{port}", crate::net::hostname()));
+    urls
+}
+
+pub fn https_access_urls(port: u16) -> Vec<String> {
+    let mut urls = vec![format!("https://localhost:{port}")];
+    for ip in crate::net::lan_ipv4_addresses() {
+        urls.push(format!("https://{ip}:{port}"));
+    }
+    urls.push(format!("https://{}.local:{port}", crate::net::hostname()));
     urls
 }

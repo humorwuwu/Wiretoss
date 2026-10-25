@@ -17,7 +17,7 @@ use futures_util::stream::Stream;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
-use crate::auth::AuthUser;
+use crate::auth::WriteUser;
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
@@ -147,7 +147,7 @@ pub fn publish_clients(state: &AppState) {
 /// 原生客户端的长连接。客户端拿到 `push_offer` 后凭 batch id 主动拉文件。
 pub async fn events(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Query(q): Query<EventsQuery>,
     headers: HeaderMap,

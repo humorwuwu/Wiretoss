@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-use crate::auth::{require_csrf, AuthUser};
+use crate::auth::{require_csrf, WriteUser};
 use crate::error::{AppError, AppResult};
 use crate::events::TransferEvent;
 use crate::fs_api::unique_path;
@@ -65,7 +65,7 @@ fn fingerprint(dir: &str, name: &str, size: u64, last_modified: i64) -> String {
 
 pub async fn init(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     Json(req): Json<InitRequest>,
 ) -> AppResult<Json<InitResponse>> {
@@ -180,7 +180,7 @@ pub async fn init(
 /// 省掉一层解析和一份拷贝，8 MiB 的分片直接按偏移写盘。
 pub async fn put_chunk(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath((id, index)): AxumPath<(String, u64)>,
     body: Bytes,
@@ -282,7 +282,7 @@ pub struct CompleteResponse {
 
 pub async fn complete(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath(id): AxumPath<String>,
 ) -> AppResult<Json<CompleteResponse>> {
@@ -374,7 +374,7 @@ pub async fn complete(
 
 pub async fn abort(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     AxumPath(id): AxumPath<String>,
 ) -> AppResult<Json<serde_json::Value>> {

@@ -49,30 +49,23 @@ cargo build --release
 打开后是一个控制面板窗口：
 
 ```
-┌─ Wiretoss ─────────────────────────────────────────┐
-│ Wiretoss   ● 运行中   端口 8080                     │
-│ 局域网文件快传 —— 对端用浏览器打开下面任意一个地址即可互传 │
-│ ────────────────────────────────────────────────── │
-│ 首次使用，请先设置一个访问密码，然后点「启动服务」        │
-│                                                    │
-│ 共享目录  [/Users/you/Wiretoss        ] [选择…]     │
-│ 用户名    [wiretoss                   ]            │
-│ 密码      [••••••••        ] [显示] [随机生成]      │
-│                                                    │
-│           [ 启动服务 ]  [ 打开浏览器 ]              │
-│ ────────────────────────────────────────────────── │
-│ 对端访问地址                                        │
-│   ┌────────┐  http://192.168.1.5:8080   [复制]     │
-│   │  二维码 │  http://localhost:8080      [复制]    │
-│   │        │  http://your-mac.local:8080 [复制]    │
-│   └────────┘                                       │
-│ ────────────────────────────────────────────────── │
-│ 传输活动                                            │
-│   ↓  vacation.zip   ▓▓▓▓▓░░░░  42.1 MB / 98.0 MB   │
-│ ────────────────────────────────────────────────── │
-│ ▸ 日志（12 条）                                     │
-└────────────────────────────────────────────────────┘
+┌─ Wiretoss ─────────────────────────────────────────────────────┐
+│ [logo] Wiretoss                    ● 运行中 · 端口 8080          │
+│        局域网文件快传                                          │
+│ [服务端] [客户端]                      对端用浏览器打开即可互传   │
+├───────────────────────────────┬────────────────────────────────┤
+│ 服务设置                       │ 扫码访问                        │
+│ 共享目录 [____________] [选择…] │  ████  http://192.168... [复制] │
+│ 用户名   [____________]        │  ████  http://localhost  [复制] │
+│ 密码     [____________]        │                                │
+│ ▸ 高级设置                     │ 传输活动                        │
+│ [停止服务] [打开浏览器]         │  还没有传输记录。               │
+├───────────────────────────────┤                                │
+│ 在线设备 · 0                   │ 运行日志                        │
+└───────────────────────────────┴────────────────────────────────┘
 ```
+
+窗口默认按左右两栏排布，窄窗口会自动堆叠成一栏。
 
 首次运行需要自己设一个密码（点「随机生成」或自己输入）。设好之后程序会把
 密码存成 Argon2 哈希，**之后再打开就不需要重新输入了，会自动开服**。
@@ -92,6 +85,37 @@ cargo build --release
 - **上传**：把文件/文件夹直接拖进浏览器窗口，或点「上传文件」/「上传文件夹」
 - **下载**：点文件名，或多选后点「下载所选」（多选/文件夹会自动打包成 zip）
 
+### 界面与手机 / 平板
+
+浏览器端是一套深色玻璃风格的单页界面。宽屏下左侧是连接信息和快捷操作，右侧是文件列表；
+手机浏览器打开时会收起侧栏，把文件表格变成卡片列表，并把「上传 / 上传文件夹 / 新建文件夹」
+固定在底部操作栏，同时适配了刘海屏安全区和触控尺寸。
+
+页面带 `manifest.webmanifest` 和主屏图标，可以像 App 一样添加到主屏幕：
+
+- **iOS Safari**：分享 → 添加到主屏幕。之后从主屏打开会全屏运行，没有浏览器地址栏。
+- **Android Chrome**：菜单 → 添加到主屏幕，生成一个快捷方式。
+
+> 默认是明文 HTTP，Chrome 不会弹出「安装应用」的完整 PWA 提示（安装能力要求 HTTPS）。
+> 如果启用了 HTTPS 并在设备上信任了 CA，PWA 安装条件会更好，但仍以浏览器实际提示为准。
+> 主屏幕快捷方式仍然可以正常使用；需要完整安装体验的话，可以用下面的原生客户端。
+
+#### 原生 iOS / Android 客户端
+
+`ios/` 和 `android/` 是电脑端的**伴侣 App**，不把服务端搬到手机上：
+
+- iOS：SwiftUI + WKWebView；Android：Kotlin + Compose + WebView
+- 原生扫码、mDNS 自动发现、常用服务器收藏、系统下载/分享
+- iPad 和宽度 ≥720dp 的 Android 平板使用左右双栏设置页；手机使用单栏
+- 文件浏览/上传/下载仍复用同一套 Web UI，因此两端功能和服务端保持一致
+
+产物：
+
+- Android：`release/android/wiretoss-<版本>-android-universal.apk`（侧载）和 `.aab`（Play 上传）
+- iOS：`release/ios/wiretoss-<版本>-ios-arm64.ipa`（App Store 分发签名，可用 Transporter / Xcode Organizer 上传）
+
+签名、上架步骤、隐私政策和审核备注见 [`docs/mobile-store.md`](docs/mobile-store.md)。
+
 ### 关掉窗口会怎样
 
 **只是把窗口藏起来，传输服务继续在后台跑** —— 这样对端随时都能连上来。
@@ -109,11 +133,22 @@ cargo build --release
 
 ## 功能
 
+- **深色玻璃界面** —— 桌面控制面板和浏览器端共用一套配色、卡片和排版，窄窗口自动堆叠
+- **原生 iOS / Android 客户端** —— 扫码、mDNS 自动发现、收藏服务器、系统下载与分享
+- **手机 / 平板适配** —— 手机响应式卡片和底部操作栏，iPad / Android 平板双栏设置页
+- **浏览器移动端** —— 响应式卡片列表、底部操作栏、刘海屏安全区，可添加到主屏幕
+- **无账号只读模式** —— 未登录访客可浏览、下载、保存到本机；上传、删除、投送仍需登录
+- **保存到本机目录** —— 桌面 Chrome/Edge + HTTPS 下选择本地默认目录，选中服务器文件后
+  直接落盘并保留目录结构；同名文件夹默认合并覆盖，删除同名项需二次确认
+- **可选 HTTPS** —— 自签本地 CA，HTTP 继续保留给手机；证书和信任步骤见
+  [`docs/https-local-save.md`](docs/https-local-save.md)
 - **目录浏览** —— 面包屑导航，按名称/大小/时间排序，多选
 - **分片断点续传上传** —— 8 MiB 分片、并发上传、刷新页面或断网后自动从断点继续
 - **HTTP Range 下载** —— 大文件走浏览器原生下载器，天然支持断点续传，不占服务端内存
 - **流式打包下载** —— 多选或整个文件夹边压边发，不落临时文件，内存占用与文件大小无关
 - **实时进度** —— 每文件进度条、速度、剩余时间；对端传文件过来时你这边也会实时看到
+- **共享目录实时同步** —— 在 Finder / 资源管理器里新增、删除、改名或替换文件，
+  已经打开的网页会自动刷新，不需要手动按 F5
 - **文件夹上传** —— 拖文件夹即可，目录结构原样保留
 - **新建 / 删除** —— 删除是递归且不可撤销的，有二次确认
 - **隔空投送式投递** —— 原生客户端连接后，服务端点选设备，把文件/文件夹拖进窗口即可自动送达；
@@ -136,7 +171,8 @@ cargo build --release
 设备名默认取主机名，可在客户端表单里修改。
 
 > 投送目标只包含原生客户端模式。浏览器客户端仍可使用原有的上传、下载和打包功能，
-> 但不会出现在投送列表里。当前版本只支持 HTTP，不支持 HTTPS。
+> 但不会出现在投送列表里。服务端默认提供 HTTP，可选启用 HTTPS（自签 CA）；
+> HTTP 监听始终保留，手机和原生客户端不需要证书。
 
 ## 命令行模式（可选）
 
@@ -200,9 +236,23 @@ wiretoss [OPTIONS]
 - 从 macOS 传来的文件名里的非法字符（`< > : " | ? *`）和保留设备名
   （`CON`、`NUL`、`COM1`…）会被自动处理成安全的名字，最终文件名以界面显示为准。
 
+## 无账号只读 / HTTPS / 保存到本机目录
+
+服务端可以在不设账号密码的情况下开放**只读浏览**：访客能看目录、下载、打包下载，
+也可以把选中的文件保存到自己电脑的默认目录；上传、新建、删除、投送仍然需要登录。
+开启入口在桌面端「服务设置」的「允许无账号只读访问」，同时会显示明显的局域网风险提示。
+
+浏览器只有在**安全上下文**（HTTPS 或本机 localhost）里才允许网页写本机文件夹。
+如果要在局域网另一台电脑上使用「保存到本机目录」，需要在服务端启用 HTTPS（自签 CA），
+并在那台电脑信任一次 CA；详细步骤、证书位置和确认流程见
+[`docs/https-local-save.md`](docs/https-local-save.md)。手机 App 的 WebView 不支持这个 API，
+所以该入口在手机上自动隐藏，普通下载/打包下载不受影响。
+
 ## 安全说明
 
-- **局域网内明文 HTTP**。传输内容不做加密，同网段的其他人理论上可以嗅探。
+- **默认是局域网明文 HTTP**。传输内容不做加密，同网段的其他人理论上可以嗅探。
+  可选启用 HTTPS 给桌面浏览器（保存到本机目录需要），但它使用自签本地 CA，
+  不会自动获得公共信任；手机和原生客户端仍走 HTTP。
   这是在「可信局域网」前提下的取舍 —— 换来的是零证书告警、零配置、最高速度。
   **不要在公共 Wi-Fi 上使用。**
 - 密码用 Argon2id 哈希存储，**不存明文**；会话是服务端内存里的一张表，
@@ -234,14 +284,29 @@ wiretoss [OPTIONS]
 ## 开发
 
 ```bash
-cargo test              # 55 个单元测试 + 29 个集成测试
+cargo test              # 58 个单元测试 + 31 个集成测试
 cargo run               # 带图形界面运行
 cargo run -- --headless # 不带界面运行
 cargo clippy --all-targets
 
 # 在 macOS 上打出两个平台的可分发产物到 release/macos/ 与 release/windows/
 ./scripts/package.sh
+
+# iOS：生成 Xcode 工程、模拟器构建（需要 xcodegen）
+cd ios && xcodegen generate
+xcodebuild -project Wiretoss.xcodeproj -scheme Wiretoss \
+  -configuration Debug -sdk iphonesimulator \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
+
+# iOS：登录付费开发者账号后生成 IPA
+WIRETOSS_TEAM_ID=<TeamID> ./scripts/ios-export.sh
+
+# Android：签名 APK + AAB（需要 JDK 17+）
+./scripts/android-release.sh
 ```
+
+移动端签名、上架、审核备注和隐私政策见 [`docs/mobile-store.md`](docs/mobile-store.md)。
 
 交叉编译 Windows 需要先装 mingw：
 
@@ -263,6 +328,7 @@ src/
   main.rs      入口：默认开图形界面，--headless 走终端模式
   gui/         桌面控制面板（egui）
     mod.rs       窗口布局、状态、与服务/客户端线程的对接、拖放投送
+    theme.rs     配色、圆角、卡片和背景绘制
     server.rs    服务端生命周期：独立线程 + tokio 运行时
     client.rs    原生客户端运行时：SSE 读取、下载 worker、断线重连
     tray.rs      菜单栏 / 托盘图标
@@ -279,10 +345,21 @@ src/
   events.rs    SSE 事件广播（含投送活动）
   net.rs       局域网地址枚举、mDNS 广播、终端二维码
   router.rs    路由表
+  tls.rs       可选 HTTPS：本地 CA、服务器证书生成和证书下载路由
+  watch.rs     共享目录外部变化 -> SSE 刷新事件
   assets.rs    把前端资源嵌进二进制
-assets/        前端（原生 HTML/CSS/JS，无构建步骤）
-packaging/     打包输入：应用图标 SVG、macOS Info.plist
-scripts/       本地打包脚本（CI 的 release 流程复用 make-app.sh）
+assets/        前端（原生 HTML/CSS/JS，无构建步骤）；含 PWA manifest 和主屏图标
+ios/           iOS 客户端（SwiftUI + WKWebView）
+  project.yml   XcodeGen 工程描述；Wiretoss.xcodeproj 由它生成
+  Wiretoss/     源码、Info.plist、隐私清单、Assets
+  WiretossUITests/ 模拟器端到端测试
+android/       Android 客户端（Kotlin + Compose + WebView）
+  app/src/main/java/dev/wiretoss/mobile/  设置页、WebView、发现、下载
+  app/src/main/res/                       图标、主题、Manifest
+packaging/     打包输入：应用图标 SVG、macOS Info.plist、Android 图标
+  android/       Android upload keystore（gitignored，需备份）
+docs/          移动端上架说明、隐私政策
+scripts/       打包、导出、清理脚本（含 ios-export.sh / android-release.sh）
 ```
 
 前端刻意不引入构建步骤：这是一个工具型单页应用，上 Vite/React 会让

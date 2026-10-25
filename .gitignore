@@ -19,3 +19,20 @@ desktop.ini
 
 # 上传中转目录（运行时生成，绝不能进版本库）
 .wiretoss/
+
+# ── 移动端 ──
+/android/local.properties
+/android/.gradle/
+/android/.kotlin/
+/android/build/
+/android/app/build/
+/ios/build/
+/ios/**/xcuserdata/
+/ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+/ios/DerivedData/
+# 上传签名是密钥，绝不进版本库；备份在 packaging/android/
+/packaging/android/*.jks
+/packaging/android/keystore.properties
+*.ipa
+*.aab
+*.apk

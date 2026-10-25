@@ -1,0 +1,511 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		150884A0AA00B561B582BBE2 /* ServerSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4507BE0C30C7CF079C0FB36A /* ServerSetupView.swift */; };
+		15EEBB6BB28E2E99AC721126 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B9A7EED472008173167C6D /* ScannerView.swift */; };
+		1C146F9DF59846DD7333E233 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 287DF8D64AF2C2E876953E19 /* RootView.swift */; };
+		2BACA73C31B5179199FB4B1C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F96E7F261F80E269E3D2E7 /* Theme.swift */; };
+		34A84DB272EF2646802ED1EB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 985879CFC85B0CF03112C9AE /* Assets.xcassets */; };
+		41D5F19992EC8E2F09F2D946 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 934F565E895D4F792748BD82 /* PrivacyInfo.xcprivacy */; };
+		5A7071C7AF709AFA94200FEA /* NetworkProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B591B3ECAF5D6651C143E8 /* NetworkProbe.swift */; };
+		613B820FF287518E8E7219CD /* BonjourBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D03DB9467C5D185AC8ACE65 /* BonjourBrowser.swift */; };
+		7497BFB1FB040977A0B3DB51 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAC23F7606F4723A70486950 /* ShareSheet.swift */; };
+		8903CA2AD3998EA6BC4BECC1 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D1A29E42D6F2984C218DE8 /* AppModel.swift */; };
+		9390172F052ADF7378CAE1F5 /* WebViewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470EF76FE55E3683350E3C1B /* WebViewScreen.swift */; };
+		9D399D6C13EE5299F3CC04BE /* WiretossUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496B89A2678DAAA282D70340 /* WiretossUITests.swift */; };
+		A21BA6FFF81FF876ACB651B2 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BF01AE8F9E9BF132EC73B7D /* Server.swift */; };
+		B2DC003E28A0FD51E57CABD3 /* WiretossApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E5679FAA0E855AF4B56154 /* WiretossApp.swift */; };
+		B5A9E959B2442D67930E9BD7 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB215F96E94FBBE6363CC9D /* WebViewContainer.swift */; };
+		C2CDAF0361D6A3A4D6F50C89 /* ServerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E748A5AB96DFB61C38C164E /* ServerStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4E91CF621E614992584D2627 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE3B37AB5F9CFF5A201BCD15 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4BD0A6E8109B074397EE7D92;
+			remoteInfo = Wiretoss;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0E748A5AB96DFB61C38C164E /* ServerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStore.swift; sourceTree = "<group>"; };
+		17E5679FAA0E855AF4B56154 /* WiretossApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiretossApp.swift; sourceTree = "<group>"; };
+		26B591B3ECAF5D6651C143E8 /* NetworkProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkProbe.swift; sourceTree = "<group>"; };
+		287DF8D64AF2C2E876953E19 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		38B9A7EED472008173167C6D /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+		4507BE0C30C7CF079C0FB36A /* ServerSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSetupView.swift; sourceTree = "<group>"; };
+		470EF76FE55E3683350E3C1B /* WebViewScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewScreen.swift; sourceTree = "<group>"; };
+		484AED50A01DDC2C57750E3D /* Wiretoss.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Wiretoss.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		496B89A2678DAAA282D70340 /* WiretossUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiretossUITests.swift; sourceTree = "<group>"; };
+		78D1A29E42D6F2984C218DE8 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		7D03DB9467C5D185AC8ACE65 /* BonjourBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourBrowser.swift; sourceTree = "<group>"; };
+		8BF01AE8F9E9BF132EC73B7D /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
+		8CB215F96E94FBBE6363CC9D /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
+		934F565E895D4F792748BD82 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		985879CFC85B0CF03112C9AE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B5BEE6FBF4EE2A3E6F73D728 /* WiretossUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WiretossUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5F96E7F261F80E269E3D2E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		EAC23F7606F4723A70486950 /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0F35441FBC53B93CCCAD6EBD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				8BF01AE8F9E9BF132EC73B7D /* Server.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		26E6A0748C112E0E813EC96F /* WiretossUITests */ = {
+			isa = PBXGroup;
+			children = (
+				496B89A2678DAAA282D70340 /* WiretossUITests.swift */,
+			);
+			path = WiretossUITests;
+			sourceTree = "<group>";
+		};
+		352D2741DECF825CE7F62459 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7D03DB9467C5D185AC8ACE65 /* BonjourBrowser.swift */,
+				26B591B3ECAF5D6651C143E8 /* NetworkProbe.swift */,
+				0E748A5AB96DFB61C38C164E /* ServerStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		41010A9D376DD1072E2AC9D1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				985879CFC85B0CF03112C9AE /* Assets.xcassets */,
+				934F565E895D4F792748BD82 /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		5721809712F791571C7DC143 /* Wiretoss */ = {
+			isa = PBXGroup;
+			children = (
+				78D1A29E42D6F2984C218DE8 /* AppModel.swift */,
+				17E5679FAA0E855AF4B56154 /* WiretossApp.swift */,
+				0F35441FBC53B93CCCAD6EBD /* Models */,
+				41010A9D376DD1072E2AC9D1 /* Resources */,
+				352D2741DECF825CE7F62459 /* Services */,
+				DD45135842FF92D22586B3D5 /* Views */,
+			);
+			path = Wiretoss;
+			sourceTree = "<group>";
+		};
+		5A3E9AC892146A3FDA9AA7BE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				484AED50A01DDC2C57750E3D /* Wiretoss.app */,
+				B5BEE6FBF4EE2A3E6F73D728 /* WiretossUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DD45135842FF92D22586B3D5 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				287DF8D64AF2C2E876953E19 /* RootView.swift */,
+				38B9A7EED472008173167C6D /* ScannerView.swift */,
+				4507BE0C30C7CF079C0FB36A /* ServerSetupView.swift */,
+				EAC23F7606F4723A70486950 /* ShareSheet.swift */,
+				C5F96E7F261F80E269E3D2E7 /* Theme.swift */,
+				8CB215F96E94FBBE6363CC9D /* WebViewContainer.swift */,
+				470EF76FE55E3683350E3C1B /* WebViewScreen.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		EEC629B08907D427BA4D474B = {
+			isa = PBXGroup;
+			children = (
+				5721809712F791571C7DC143 /* Wiretoss */,
+				26E6A0748C112E0E813EC96F /* WiretossUITests */,
+				5A3E9AC892146A3FDA9AA7BE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4BD0A6E8109B074397EE7D92 /* Wiretoss */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9CC26EDF68AAC0804CB378E2 /* Build configuration list for PBXNativeTarget "Wiretoss" */;
+			buildPhases = (
+				4E45A013BC572531F9D9820E /* Sources */,
+				26D89161E59C3BD4D7F342C0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Wiretoss;
+			packageProductDependencies = (
+			);
+			productName = Wiretoss;
+			productReference = 484AED50A01DDC2C57750E3D /* Wiretoss.app */;
+			productType = "com.apple.product-type.application";
+		};
+		66D3D23AA0B31F4C03A4E349 /* WiretossUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 53760F7DDBFB03C84009F223 /* Build configuration list for PBXNativeTarget "WiretossUITests" */;
+			buildPhases = (
+				BC19FE78257C29689874C61F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B77E5DA60FC9575987C2E53D /* PBXTargetDependency */,
+			);
+			name = WiretossUITests;
+			packageProductDependencies = (
+			);
+			productName = WiretossUITests;
+			productReference = B5BEE6FBF4EE2A3E6F73D728 /* WiretossUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AE3B37AB5F9CFF5A201BCD15 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4BD0A6E8109B074397EE7D92 = {
+						ProvisioningStyle = Automatic;
+					};
+					66D3D23AA0B31F4C03A4E349 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 4BD0A6E8109B074397EE7D92;
+					};
+				};
+			};
+			buildConfigurationList = EA22212108C86461A01DB16C /* Build configuration list for PBXProject "Wiretoss" */;
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = EEC629B08907D427BA4D474B;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5A3E9AC892146A3FDA9AA7BE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4BD0A6E8109B074397EE7D92 /* Wiretoss */,
+				66D3D23AA0B31F4C03A4E349 /* WiretossUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		26D89161E59C3BD4D7F342C0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34A84DB272EF2646802ED1EB /* Assets.xcassets in Resources */,
+				41D5F19992EC8E2F09F2D946 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4E45A013BC572531F9D9820E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8903CA2AD3998EA6BC4BECC1 /* AppModel.swift in Sources */,
+				613B820FF287518E8E7219CD /* BonjourBrowser.swift in Sources */,
+				5A7071C7AF709AFA94200FEA /* NetworkProbe.swift in Sources */,
+				1C146F9DF59846DD7333E233 /* RootView.swift in Sources */,
+				15EEBB6BB28E2E99AC721126 /* ScannerView.swift in Sources */,
+				A21BA6FFF81FF876ACB651B2 /* Server.swift in Sources */,
+				150884A0AA00B561B582BBE2 /* ServerSetupView.swift in Sources */,
+				C2CDAF0361D6A3A4D6F50C89 /* ServerStore.swift in Sources */,
+				7497BFB1FB040977A0B3DB51 /* ShareSheet.swift in Sources */,
+				2BACA73C31B5179199FB4B1C /* Theme.swift in Sources */,
+				B5A9E959B2442D67930E9BD7 /* WebViewContainer.swift in Sources */,
+				9390172F052ADF7378CAE1F5 /* WebViewScreen.swift in Sources */,
+				B2DC003E28A0FD51E57CABD3 /* WiretossApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC19FE78257C29689874C61F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D399D6C13EE5299F3CC04BE /* WiretossUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B77E5DA60FC9575987C2E53D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4BD0A6E8109B074397EE7D92 /* Wiretoss */;
+			targetProxy = 4E91CF621E614992584D2627 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		169F390C76EC9F9C40ACF616 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.wiretoss.mobile.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Wiretoss;
+			};
+			name = Release;
+		};
+		331C8D79EFA91B14C1E91ED2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Wiretoss/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.wiretoss.mobile;
+				PRODUCT_NAME = Wiretoss;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		54D7340292DCCA67F1984982 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.wiretoss.mobile.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Wiretoss;
+			};
+			name = Debug;
+		};
+		59275159A21773787517319F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.2.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		89C9B4043E61542544BEB08A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.2.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AC8528AE25A11A408DFD8536 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Wiretoss/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.wiretoss.mobile;
+				PRODUCT_NAME = Wiretoss;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		53760F7DDBFB03C84009F223 /* Build configuration list for PBXNativeTarget "WiretossUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				54D7340292DCCA67F1984982 /* Debug */,
+				169F390C76EC9F9C40ACF616 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9CC26EDF68AAC0804CB378E2 /* Build configuration list for PBXNativeTarget "Wiretoss" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				331C8D79EFA91B14C1E91ED2 /* Debug */,
+				AC8528AE25A11A408DFD8536 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EA22212108C86461A01DB16C /* Build configuration list for PBXProject "Wiretoss" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				89C9B4043E61542544BEB08A /* Debug */,
+				59275159A21773787517319F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AE3B37AB5F9CFF5A201BCD15 /* Project object */;
+}

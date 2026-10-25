@@ -3,97 +3,252 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Wiretoss</title>
-<link rel="icon" href="/favicon.svg">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0B1020">
+<meta name="description" content="Wiretoss — 局域网文件快传，浏览器即客户端">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wiretoss">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/style.css">
+<title>Wiretoss</title>
 </head>
 <body>
 
+<div class="backdrop" aria-hidden="true">
+  <span class="orb orb-a"></span>
+  <span class="orb orb-b"></span>
+  <span class="orb orb-c"></span>
+</div>
+
 <!-- ───────────────────────────── 登录 ───────────────────────────── -->
 <section id="login-view" class="login" hidden>
-  <form id="login-form" class="login-card" autocomplete="on">
-    <div class="login-logo">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M9 3l4 4-4 4M20 17h-9M15 21l-4-4 4-4"/></svg>
-      <h1>Wiretoss</h1>
+  <div class="login-hero">
+    <div class="brand-mark brand-mark-lg" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M4 7h9M9 3l4 4-4 4M20 17h-9M15 21l-4-4 4-4"/></svg>
     </div>
-    <p class="login-sub">局域网文件快传</p>
+    <h1>Wiretoss</h1>
+    <p>局域网文件快传 · 浏览器即客户端</p>
+  </div>
 
-    <label class="field">
-      <span>用户名</span>
-      <input id="login-user" name="username" autocomplete="username" required autofocus>
-    </label>
-    <label class="field">
-      <span>密码</span>
-      <input id="login-pass" name="password" type="password" autocomplete="current-password" required>
-    </label>
+  <form id="login-form" class="login-card glass" autocomplete="on">
+    <div class="login-card-head">
+      <h2>连接到这台设备</h2>
+      <p>输入服务端启动时设置的账号密码</p>
+    </div>
+
+    <div class="field">
+      <label for="login-user">用户名</label>
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <input id="login-user" name="username" autocomplete="username" required autofocus>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="login-pass">密码</label>
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="login-pass" name="password" type="password" autocomplete="current-password" required>
+        <button id="password-toggle" class="input-action" type="button" aria-label="显示密码" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
 
     <p id="login-error" class="login-error" role="alert" hidden></p>
 
-    <button id="login-submit" class="btn btn-primary btn-block" type="submit">登录</button>
-    <p class="login-hint">密码在服务端启动时于终端打印。</p>
+    <button id="login-submit" class="btn btn-primary btn-block" type="submit">
+      <span>登录</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+
+    <p class="login-hint">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>
+      密码只在服务端启动时显示，仅用于这台设备登录
+    </p>
+    <button id="login-back" class="btn btn-ghost btn-sm login-back" type="button" hidden>
+      以只读模式继续
+    </button>
   </form>
 </section>
 
 <!-- ───────────────────────────── 主界面 ───────────────────────────── -->
 <section id="app-view" class="app" hidden>
-  <header class="topbar">
-    <div class="topbar-left">
-      <span class="brand">Wiretoss</span>
-      <nav id="crumbs" class="crumbs" aria-label="路径"></nav>
+  <aside class="sidebar glass" aria-label="连接信息">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 7h9M9 3l4 4-4 4M20 17h-9M15 21l-4-4 4-4"/></svg>
+      </div>
+      <div class="brand-copy">
+        <strong>Wiretoss</strong>
+        <span>局域网快传</span>
+      </div>
     </div>
-    <div class="topbar-right">
-      <span id="user-label" class="user-label"></span>
-      <button id="logout-btn" class="btn btn-ghost btn-sm" type="button">退出</button>
+
+    <div class="server-card">
+      <div class="server-status"><i></i>服务运行中</div>
+      <dl>
+        <div><dt>账号</dt><dd id="sidebar-user">—</dd></div>
+        <div><dt>共享目录</dt><dd id="sidebar-root">—</dd></div>
+      </dl>
     </div>
-  </header>
 
-  <div class="toolbar">
-    <button id="upload-files" class="btn btn-primary btn-sm" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
-      上传文件
+    <div class="sidebar-tip">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
+      <p>把文件拖到窗口任意位置即可上传；手机扫码或输入地址也能加入。</p>
+    </div>
+
+    <div class="sidebar-footer">
+      <span>同一局域网 · 无需安装</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar glass">
+      <div class="brand brand-mobile">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 7h9M9 3l4 4-4 4M20 17h-9M15 21l-4-4 4-4"/></svg>
+        </div>
+        <strong>Wiretoss</strong>
+      </div>
+
+      <nav id="crumbs" class="crumbs" aria-label="当前路径"></nav>
+
+      <div class="topbar-right">
+        <span id="user-label" class="user-chip"></span>
+        <button id="login-btn" class="btn btn-ghost btn-sm" type="button" hidden>登录</button>
+        <button id="logout-btn" class="icon-btn" type="button" title="退出登录" aria-label="退出登录">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="toolbar glass" aria-label="文件操作">
+      <button id="upload-files" class="btn btn-primary" type="button" aria-label="上传文件">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+        <span class="btn-label">上传文件</span>
+      </button>
+      <button id="upload-folder" class="btn" type="button" aria-label="上传文件夹">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 16v-4M9.5 13.5 12 11l2.5 2.5"/></svg>
+        <span class="btn-label">上传文件夹</span>
+      </button>
+      <button id="mkdir-btn" class="btn" type="button" aria-label="新建文件夹">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg>
+        <span class="btn-label">新建文件夹</span>
+      </button>
+
+      <span class="toolbar-gap"></span>
+
+      <button id="save-local-btn" class="btn" type="button" hidden title="保存到本机目录" aria-label="保存到本机目录">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v4M10 13l2 2 2-2"/></svg>
+        <span class="btn-label">保存到本机</span>
+      </button>
+      <button id="download-btn" class="btn" type="button" disabled aria-label="下载所选">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>
+        <span class="btn-label">下载所选</span>
+      </button>
+      <button id="delete-btn" class="btn btn-danger" type="button" disabled aria-label="删除所选">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+        <span class="btn-label">删除</span>
+      </button>
+
+      <input id="file-input" type="file" multiple hidden>
+      <input id="dir-input" type="file" webkitdirectory directory multiple hidden>
+    </section>
+
+    <div id="https-hint" class="https-hint glass" hidden>
+      <div class="https-hint-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      </div>
+      <div class="https-hint-copy">
+        <strong id="https-hint-title">保存到本机目录需要 HTTPS</strong>
+        <p id="https-hint-text"></p>
+        <div class="https-hint-actions">
+          <a id="https-link" class="btn btn-primary btn-sm" href="#" hidden>用 HTTPS 打开</a>
+          <a id="https-cert-link" class="btn btn-sm" href="/wiretoss-ca.pem" download>下载 CA 证书</a>
+        </div>
+      </div>
+    </div>
+
+    <section class="list-card glass">
+      <div class="list-head">
+        <div class="list-title">
+          <h2>文件</h2>
+          <p id="list-meta">正在载入…</p>
+        </div>
+        <div class="list-tools">
+          <button id="local-dir-btn" class="btn btn-ghost btn-sm local-dir" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span id="local-dir-label" class="btn-label">未设置保存目录</span>
+          </button>
+          <label class="sort-wrap">
+            <span>排序</span>
+            <select id="sort-select" aria-label="排序方式">
+              <option value="name:1">名称 ↑</option>
+              <option value="name:-1">名称 ↓</option>
+              <option value="size:-1">大小 ↓</option>
+              <option value="size:1">大小 ↑</option>
+              <option value="mtime:-1">时间 ↓</option>
+              <option value="mtime:1">时间 ↑</option>
+            </select>
+          </label>
+          <button id="refresh-btn" class="icon-btn" type="button" title="刷新" aria-label="刷新">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="list-wrap" class="list-wrap">
+        <table class="filelist">
+          <thead>
+            <tr>
+              <th class="col-check"><input id="check-all" type="checkbox" aria-label="全选"></th>
+              <th class="col-name" data-sort="name" aria-sort="ascending">名称</th>
+              <th class="col-size" data-sort="size">大小</th>
+              <th class="col-time" data-sort="mtime">修改时间</th>
+              <th class="col-act"><span class="visually-hidden">操作</span></th>
+            </tr>
+          </thead>
+          <tbody id="file-tbody"></tbody>
+        </table>
+
+        <div id="empty-hint" class="empty-hint" hidden>
+          <div class="empty-art" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 16v-5M9.5 13.5 12 11l2.5 2.5"/></svg>
+          </div>
+          <h3>这里还没有文件</h3>
+          <p>把文件拖进来，或点下方的上传按钮开始。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="selection-bar" class="selection-bar glass" hidden>
+    <span id="selection-count">已选 0 项</span>
+    <button id="selection-download" class="btn btn-sm" type="button">下载</button>
+    <button id="selection-delete" class="btn btn-sm btn-danger" type="button">删除</button>
+    <button id="selection-clear" class="icon-btn" type="button" aria-label="取消选择" title="取消选择">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
-    <button id="upload-folder" class="btn btn-sm" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      上传文件夹
-    </button>
-    <button id="mkdir-btn" class="btn btn-sm" type="button">新建文件夹</button>
-
-    <span class="toolbar-gap"></span>
-
-    <button id="download-btn" class="btn btn-sm" type="button" disabled>下载所选</button>
-    <button id="delete-btn" class="btn btn-sm btn-danger" type="button" disabled>删除</button>
-
-    <input id="file-input" type="file" multiple hidden>
-    <input id="dir-input" type="file" webkitdirectory directory multiple hidden>
-  </div>
-
-  <div id="list-wrap" class="list-wrap">
-    <table class="filelist">
-      <thead>
-        <tr>
-          <th class="col-check"><input id="check-all" type="checkbox" aria-label="全选"></th>
-          <th class="col-name" data-sort="name" aria-sort="ascending">名称</th>
-          <th class="col-size" data-sort="size">大小</th>
-          <th class="col-time" data-sort="mtime">修改时间</th>
-          <th class="col-act"></th>
-        </tr>
-      </thead>
-      <tbody id="file-tbody"></tbody>
-    </table>
-    <p id="empty-hint" class="empty-hint" hidden>这个文件夹是空的 —— 把文件拖进来即可上传。</p>
   </div>
 
   <!-- 拖拽上传遮罩 -->
   <div id="drop-overlay" class="drop-overlay" hidden>
-    <div class="drop-box">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+    <div class="drop-box glass">
+      <div class="drop-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+      </div>
       <p>松开即可上传到当前文件夹</p>
+      <span>文件夹也可以</span>
     </div>
   </div>
 
   <!-- 传输面板 -->
-  <aside id="transfers" class="transfers" hidden>
+  <aside id="transfers" class="transfers glass" hidden aria-label="传输进度">
     <header class="transfers-head">
       <span id="transfers-title">传输中</span>
       <button id="transfers-toggle" class="btn btn-ghost btn-sm" type="button">收起</button>
@@ -103,6 +258,38 @@
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
 </section>
+
+<!-- ───────────────────────────── 对话框 ───────────────────────────── -->
+<div id="dialog-root" class="dialog-root" hidden>
+  <div class="dialog-backdrop" data-dialog-cancel></div>
+  <div class="dialog glass" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <h2 id="dialog-title">提示</h2>
+    <p id="dialog-message" class="dialog-message"></p>
+    <input id="dialog-input" class="dialog-input" aria-label="输入" hidden>
+    <div class="dialog-actions">
+      <button id="dialog-cancel" class="btn" type="button">取消</button>
+      <button id="dialog-confirm" class="btn btn-primary" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="conflict-root" class="dialog-root" hidden>
+  <div class="dialog-backdrop" data-conflict-cancel></div>
+  <div class="dialog glass conflict-dialog" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+    <h2 id="conflict-title">目标目录已有同名内容</h2>
+    <p id="conflict-summary" class="dialog-message"></p>
+    <ul id="conflict-details" class="conflict-details" hidden></ul>
+    <div class="dialog-actions conflict-actions">
+      <button id="conflict-cancel" class="btn" type="button">取消</button>
+      <button id="conflict-replace" class="btn btn-danger" type="button">删除同名项后复制</button>
+      <button id="conflict-merge" class="btn btn-primary" type="button">合并并覆盖</button>
+    </div>
+  </div>
+</div>
+
+<noscript>
+  <div class="noscript">Wiretoss 的文件界面需要启用 JavaScript。</div>
+</noscript>
 
 <script type="module" src="/app.js"></script>
 </body>

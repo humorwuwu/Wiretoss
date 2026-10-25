@@ -18,10 +18,13 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         // ---- 无需登录
         .route("/api/login", post(auth::login))
+        // 桌面浏览器安装本地 CA 用；证书本身是公开信息。
+        .route("/wiretoss-ca.pem", get(crate::tls::ca_cert))
         // ---- 需要登录（由各 handler 上的 AuthUser 提取器强制）
         .route("/api/logout", post(auth::logout))
         .route("/api/me", get(auth::me))
         .route("/api/list", get(fs_api::list))
+        .route("/api/tree", get(fs_api::tree))
         .route("/api/mkdir", post(fs_api::mkdir))
         .route("/api/delete", post(fs_api::delete))
         .route("/api/download", get(download::download_file))

@@ -42,6 +42,8 @@ fn new_token() -> String {
 /// 未登录会在进入 handler 之前就返回 401。
 pub struct AuthUser {
     pub username: String,
+    /// 访客只读模式下为 false；写操作必须换成 `WriteUser` 提取器。
+    pub can_write: bool,
 }
 
 impl FromRequestParts<Arc<AppState>> for AuthUser {
@@ -52,23 +54,54 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         state: &Arc<AppState>,
     ) -> Result<Self, Self::Rejection> {
         let jar = CookieJar::from_headers(&parts.headers);
-        let token = jar
-            .get(SESSION_COOKIE)
-            .map(|c| c.value().to_string())
-            .ok_or(AppError::Unauthorized)?;
-
-        let sessions = state
-            .sessions
-            .lock()
-            .map_err(|_| AppError::Internal("会话表锁中毒".into()))?;
-        let session = sessions.get(&token).ok_or(AppError::Unauthorized)?;
-
-        if session.expires_at <= Instant::now() {
-            return Err(AppError::Unauthorized);
+        if let Some(token) = jar.get(SESSION_COOKIE).map(|c| c.value().to_string()) {
+            let sessions = state
+                .sessions
+                .lock()
+                .map_err(|_| AppError::Internal("会话表锁中毒".into()))?;
+            if let Some(session) = sessions.get(&token) {
+                if session.expires_at > Instant::now() {
+                    return Ok(AuthUser {
+                        username: session.username.clone(),
+                        can_write: true,
+                    });
+                }
+            }
         }
-        Ok(AuthUser {
-            username: session.username.clone(),
-        })
+
+        // 没有有效会话。开启了访客只读的话，仍然允许浏览和下载；
+        // 写路由用 WriteUser，会在进入 handler 前拒绝。
+        let allow_guest = state
+            .config
+            .read()
+            .map(|cfg| cfg.allow_guest)
+            .unwrap_or(false);
+        if allow_guest {
+            return Ok(AuthUser {
+                username: "guest".to_string(),
+                can_write: false,
+            });
+        }
+
+        Err(AppError::Unauthorized)
+    }
+}
+
+/// 写操作提取器：会话有效，或者访客只读模式下拒绝。
+pub struct WriteUser(pub AuthUser);
+
+impl FromRequestParts<Arc<AppState>> for WriteUser {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<AppState>,
+    ) -> Result<Self, Self::Rejection> {
+        let user = AuthUser::from_request_parts(parts, state).await?;
+        if !user.can_write {
+            return Err(AppError::Forbidden);
+        }
+        Ok(WriteUser(user))
     }
 }
 
@@ -176,6 +209,11 @@ pub async fn me(
         .map_err(|_| AppError::Internal("配置锁中毒".into()))?;
     Ok(Json(json!({
         "username": user.username,
+        "canWrite": user.can_write,
+        "allowGuest": cfg.allow_guest,
+        "canLogin": !cfg.password_hash.is_empty(),
+        "httpsEnabled": cfg.https,
+        "httpsPort": cfg.https_port,
         "rootName": cfg.root.file_name().map(|n| n.to_string_lossy().to_string()),
         "rootPath": cfg.root.display().to_string(),
     })))

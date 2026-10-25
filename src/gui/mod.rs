@@ -7,6 +7,7 @@
 mod client;
 mod logging;
 mod server;
+mod theme;
 mod tray;
 
 use std::path::PathBuf;
@@ -24,14 +25,26 @@ use server::{ServerEvent, ServerHandle, ServerSettings};
 use tray::TrayCommand;
 
 pub fn run(initial_mode: Option<StartMode>) -> eframe::Result<()> {
+    let viewport = egui::ViewportBuilder::default()
+        .with_title("Wiretoss")
+        .with_app_id("dev.wiretoss.app")
+        .with_inner_size([1000.0, 780.0])
+        .with_min_inner_size([560.0, 560.0])
+        // 服务端要接收 OS 拖放；显式打开，避免某些平台默认关闭。
+        .with_drag_and_drop(true);
+
+    // eframe 默认会把应用图标设成 egui 自带的那张。在 macOS 上这会调用
+    // NSApplication.setApplicationIconImage，Dock 图标因此变成 egui 的黑色图标，
+    // 而 Finder 里显示的仍是 .app 包里的 AppIcon.icns —— 两边看起来不一样。
+    // IconData::default() 是 egui 文档里约定的「用系统默认图标」：macOS 保留
+    // bundle 图标，Windows / Linux 用下面这张和打包图标同源的 PNG。
+    #[cfg(target_os = "macos")]
+    let viewport = viewport.with_icon(Arc::new(egui::IconData::default()));
+    #[cfg(not(target_os = "macos"))]
+    let viewport = viewport.with_icon(Arc::new(app_icon()));
+
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Wiretoss")
-            .with_app_id("dev.wiretoss.app")
-            .with_inner_size([640.0, 800.0])
-            .with_min_inner_size([520.0, 560.0])
-            // 服务端要接收 OS 拖放；显式打开，避免某些平台默认关闭。
-            .with_drag_and_drop(true),
+        viewport,
         ..Default::default()
     };
 
@@ -40,6 +53,18 @@ pub fn run(initial_mode: Option<StartMode>) -> eframe::Result<()> {
         options,
         Box::new(move |cc| Ok(Box::new(GuiApp::new(cc, initial_mode)))),
     )
+}
+
+/// Windows / Linux 的窗口与任务栏图标。
+///
+/// 由 `packaging/icon.svg` 导出（`sips -s format png` 渲染后缩到 256px），和
+/// macOS 打包脚本生成 AppIcon.icns 用的是同一份图稿；改图稿时两张一起更新。
+/// `IconData::default()` 虽然能「不设置图标」，但在这些平台上系统默认图标
+/// 就是 exe 的白纸/空白图标，所以这里必须给一张真的。
+#[cfg(not(target_os = "macos"))]
+fn app_icon() -> egui::IconData {
+    eframe::icon_data::from_png_bytes(include_bytes!("../../packaging/icon-256.png"))
+        .expect("packaging/icon-256.png 是随源码提交的图标，不应解码失败")
 }
 
 // ─────────────────────────── 传输活动 ───────────────────────────
@@ -69,6 +94,7 @@ struct Activity {
 struct Running {
     port: u16,
     urls: Vec<String>,
+    https_urls: Vec<String>,
     mdns_ok: bool,
 }
 
@@ -107,8 +133,13 @@ struct GuiApp {
     port: u16,
     bind: String,
     advertise_mdns: bool,
-    /// 配置里是否已经有密码了。没有的话「启动」按钮要禁用。
+    /// 配置里是否已经有密码了。没有的话「启动」按钮要禁用（除非开了访客只读）。
     has_password: bool,
+    /// 允许没有账号的访客只读浏览/下载；写操作仍需登录。
+    allow_guest: bool,
+    /// 是否同时启动 HTTPS 监听。桌面浏览器保存到本机目录需要安全上下文。
+    https: bool,
+    https_port: u16,
 
     // ── 显示状态 ──
     activity: Vec<Activity>,
@@ -125,7 +156,7 @@ struct GuiApp {
 impl GuiApp {
     fn new(cc: &eframe::CreationContext<'_>, initial_mode: Option<StartMode>) -> Self {
         install_cjk_font(&cc.egui_ctx);
-        cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        theme::install(&cc.egui_ctx);
 
         // 配置不存在时直接在 GUI 里建一份空壳，等用户在窗口里设密码。
         // 这里绝不能自动生成一个随机密码：用户没见过那串东西，
@@ -143,6 +174,9 @@ impl GuiApp {
                     session_hours: 12,
                     client: config::ClientSettings::default(),
                     start_mode: config::StartMode::Server,
+                    allow_guest: false,
+                    https: false,
+                    https_port: config::DEFAULT_HTTPS_PORT,
                 }),
         };
 
@@ -193,6 +227,9 @@ impl GuiApp {
             bind: "0.0.0.0".to_string(),
             advertise_mdns: true,
             has_password: !config.password_hash.is_empty(),
+            allow_guest: config.allow_guest,
+            https: config.https,
+            https_port: config.https_port,
             activity: Vec::new(),
             log: Vec::new(),
             log_rx,
@@ -215,11 +252,11 @@ impl GuiApp {
             // 已经设过密码就直接开服：这个程序存在的意义就是"能被连上"，
             // 每次打开还要手点一下「启动服务」纯属多余。
             // 首次运行没密码，只能等用户设完再启动。
-            if app.has_password {
+            if app.has_password || app.allow_guest {
                 app.start();
             } else {
                 app.banner = Some((
-                    "首次使用，请先设置一个访问密码，然后点「启动服务」".into(),
+                    "首次使用：请设置访问密码，或开启「允许无账号只读访问」".into(),
                     false,
                 ));
             }
@@ -260,10 +297,14 @@ impl GuiApp {
     fn start(&mut self) {
         self.banner = None;
 
-        // 没设过密码又没在输入框里填，就不让启动 —— 否则会开出一个
-        // 任何人都进不来的服务，用户只会觉得"怎么连不上"。
-        if !self.has_password && self.password_input.trim().is_empty() {
-            self.banner = Some(("请先设置一个访问密码".into(), true));
+        // 没设过密码又没在输入框里填，也不开访客只读，就不让启动 ——
+        // 否则会开出一个任何人都进不来的服务。
+        if !self.has_password && self.password_input.trim().is_empty() && !self.allow_guest {
+            self.banner = Some(("请先设置一个访问密码，或开启无账号只读访问".into(), true));
+            return;
+        }
+        if self.https && (self.https_port == 0 || self.https_port == self.port) {
+            self.banner = Some(("HTTPS 端口不能为 0，也不能和 HTTP 端口相同".into(), true));
             return;
         }
 
@@ -289,6 +330,9 @@ impl GuiApp {
         cfg.root = root;
         cfg.username = self.username.trim().to_string();
         cfg.port = self.port;
+        cfg.allow_guest = self.allow_guest;
+        cfg.https = self.https;
+        cfg.https_port = self.https_port;
 
         if cfg.username.is_empty() {
             self.banner = Some(("用户名不能为空".into(), true));
@@ -327,12 +371,17 @@ impl GuiApp {
             ServerEvent::Started {
                 port,
                 urls,
+                https_urls,
                 mdns_ok,
             } => {
                 self.log(format!("服务已启动，监听端口 {port}"));
+                if !https_urls.is_empty() {
+                    self.log("HTTPS 已启用（桌面浏览器保存到本机目录）");
+                }
                 self.running = Some(Running {
                     port,
                     urls,
+                    https_urls,
                     mdns_ok,
                 });
             }
@@ -842,32 +891,38 @@ impl eframe::App for GuiApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        egui::CentralPanel::default().show(ui, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                self.draw_header(ui);
-                ui.add_space(8.0);
-                match self.mode {
-                    StartMode::Server => {
-                        self.draw_settings(ui, &ctx);
-                        ui.add_space(10.0);
-                        // 在线客户端是投送的入口，放在二维码前面，避免用户
-                        // 每次都要往下滚才能点选接收方。
-                        self.draw_clients(ui, &ctx);
-                        ui.add_space(10.0);
-                        self.draw_access(ui, &ctx);
-                        ui.add_space(10.0);
-                    }
-                    StartMode::Client => {
-                        self.draw_client_settings(ui, &ctx);
-                        ui.add_space(10.0);
-                    }
-                }
-                self.draw_activity(ui);
-                ui.add_space(10.0);
-                self.draw_log(ui);
-                ui.add_space(8.0);
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(theme::BG_TOP))
+            .show(ui, |ui| {
+                theme::paint_background(ui);
+                egui::Frame::new()
+                    .inner_margin(egui::Margin::same(16))
+                    .show(ui, |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                ui.set_width(ui.available_width());
+                                ui.add_space(2.0);
+                                self.draw_header(ui);
+                                ui.add_space(14.0);
+
+                                if ui.available_width() >= 820.0 {
+                                    ui.columns(2, |columns| {
+                                        self.draw_left_column(&mut columns[0], &ctx);
+                                        self.draw_right_column(&mut columns[1], &ctx);
+                                    });
+                                } else {
+                                    self.draw_left_column(ui, &ctx);
+                                    ui.add_space(14.0);
+                                    self.draw_right_column(ui, &ctx);
+                                }
+
+                                ui.add_space(14.0);
+                                self.draw_footer(ui);
+                                ui.add_space(6.0);
+                            });
+                    });
             });
-        });
 
         self.draw_receiver_picker(&ctx);
     }
@@ -877,241 +932,447 @@ impl eframe::App for GuiApp {
 
 impl GuiApp {
     fn draw_header(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.heading("Wiretoss");
-            ui.add_space(8.0);
+        egui::Frame::new()
+            .fill(theme::CARD)
+            .stroke(egui::Stroke::new(1.0, theme::BORDER))
+            .corner_radius(egui::CornerRadius::same(18))
+            .shadow(egui::epaint::Shadow {
+                offset: [0, 8],
+                blur: 24,
+                spread: 0,
+                color: egui::Color32::from_black_alpha(80),
+            })
+            .inner_margin(egui::Margin::same(16))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
 
-            let mut mode = self.mode;
-            ui.selectable_value(&mut mode, StartMode::Server, "服务端");
-            ui.selectable_value(&mut mode, StartMode::Client, "客户端");
-            if mode != self.mode {
-                self.switch_mode(mode);
-            }
+                ui.horizontal(|ui| {
+                    theme::logo(ui, 42.0);
+                    ui.add_space(11.0);
+                    ui.vertical(|ui| {
+                        ui.label(
+                            egui::RichText::new("Wiretoss")
+                                .size(21.0)
+                                .strong()
+                                .color(theme::TEXT),
+                        );
+                        ui.label(
+                            egui::RichText::new("局域网文件快传")
+                                .size(11.5)
+                                .color(theme::TEXT_DIM),
+                        );
+                    });
 
-            ui.add_space(8.0);
-            if self.mode == StartMode::Server {
-                match &self.running {
-                    Some(running) => {
-                        ui.colored_label(egui::Color32::from_rgb(0x4a, 0xde, 0x80), "● 运行中");
-                        ui.label(format!("端口 {}", running.port));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let (text, color) = self.status_badge();
+                        theme::pill(ui, &text, color);
+                    });
+                });
+
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    let selected = match self.mode {
+                        StartMode::Server => 0,
+                        StartMode::Client => 1,
+                    };
+                    if let Some(chosen) = theme::segmented(ui, &["服务端", "客户端"], selected)
+                    {
+                        let next = if chosen == 0 {
+                            StartMode::Server
+                        } else {
+                            StartMode::Client
+                        };
+                        if next != self.mode {
+                            self.switch_mode(next);
+                        }
                     }
-                    None => {
-                        ui.colored_label(egui::Color32::GRAY, "● 已停止");
-                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let hint = match self.mode {
+                            StartMode::Server => "对端用浏览器打开即可互传",
+                            StartMode::Client => "连接后自动接收投送",
+                        };
+                        ui.label(
+                            egui::RichText::new(hint)
+                                .size(11.0)
+                                .color(theme::TEXT_FAINT),
+                        );
+                    });
+                });
+
+                if let Some((message, is_error)) = &self.banner {
+                    let color = if *is_error { theme::DANGER } else { theme::OK };
+                    ui.add_space(11.0);
+                    egui::Frame::new()
+                        .fill(egui::Color32::from_rgba_unmultiplied(
+                            color.r(),
+                            color.g(),
+                            color.b(),
+                            24,
+                        ))
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            egui::Color32::from_rgba_unmultiplied(
+                                color.r(),
+                                color.g(),
+                                color.b(),
+                                80,
+                            ),
+                        ))
+                        .corner_radius(egui::CornerRadius::same(10))
+                        .inner_margin(egui::Margin::symmetric(12, 8))
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new(message).size(12.0).color(color));
+                        });
                 }
-            } else {
-                let (text, color) = match &self.client_status {
-                    ClientStatus::Connecting => {
-                        ("● 连接中", egui::Color32::from_rgb(0xf5, 0xa6, 0x23))
-                    }
-                    ClientStatus::Connected => {
-                        ("● 已连接", egui::Color32::from_rgb(0x4a, 0xde, 0x80))
-                    }
-                    ClientStatus::Reconnecting { .. } => {
-                        ("● 重连中", egui::Color32::from_rgb(0xf5, 0xa6, 0x23))
-                    }
-                    ClientStatus::Disconnected => ("● 未连接", egui::Color32::GRAY),
-                    ClientStatus::Failed(_) => {
-                        ("● 连接失败", egui::Color32::from_rgb(0xf8, 0x71, 0x71))
-                    }
-                };
-                ui.colored_label(color, text);
-            }
-        });
+            });
+    }
 
-        let subtitle = match self.mode {
-            StartMode::Server => {
-                "局域网文件快传 —— 对端可用浏览器互传，或切到客户端模式接收隔空投送"
-            }
-            StartMode::Client => "客户端模式 —— 连接服务器后自动接收投送文件到指定目录",
-        };
-        ui.label(
-            egui::RichText::new(subtitle)
-                .small()
-                .color(egui::Color32::GRAY),
-        );
-
-        if let Some((message, is_error)) = &self.banner {
-            ui.add_space(6.0);
-            let color = if *is_error {
-                egui::Color32::from_rgb(0xf8, 0x71, 0x71)
-            } else {
-                egui::Color32::from_rgb(0x4a, 0xde, 0x80)
-            };
-            ui.colored_label(color, message);
+    fn status_badge(&self) -> (String, egui::Color32) {
+        match self.mode {
+            StartMode::Server => match &self.running {
+                Some(running) => (format!("● 运行中 · 端口 {}", running.port), theme::OK),
+                None => ("● 已停止".to_string(), theme::TEXT_FAINT),
+            },
+            StartMode::Client => match &self.client_status {
+                ClientStatus::Connecting => ("● 连接中".to_string(), theme::WARN),
+                ClientStatus::Connected => ("● 已连接".to_string(), theme::OK),
+                ClientStatus::Reconnecting { .. } => ("● 重连中".to_string(), theme::WARN),
+                ClientStatus::Disconnected => ("● 未连接".to_string(), theme::TEXT_FAINT),
+                ClientStatus::Failed(_) => ("● 连接失败".to_string(), theme::DANGER),
+            },
         }
+    }
+
+    fn draw_left_column(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        match self.mode {
+            StartMode::Server => {
+                self.draw_settings(ui, ctx);
+                ui.add_space(14.0);
+                // 在线客户端是投送的入口，放在设置下面，避免每次都要往下滚。
+                self.draw_clients(ui, ctx);
+            }
+            StartMode::Client => self.draw_client_settings(ui, ctx),
+        }
+    }
+
+    fn draw_right_column(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        if self.mode == StartMode::Server {
+            self.draw_access(ui, ctx);
+            ui.add_space(14.0);
+        }
+        self.draw_activity(ui);
+        ui.add_space(14.0);
+        self.draw_log(ui);
+    }
+
+    fn draw_footer(&self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label(
+                egui::RichText::new(format!("Wiretoss v{}", env!("CARGO_PKG_VERSION")))
+                    .size(10.5)
+                    .color(theme::TEXT_FAINT),
+            );
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(
+                    egui::RichText::new("数据只在局域网内传输")
+                        .size(10.5)
+                        .color(theme::TEXT_FAINT),
+                );
+            });
+        });
     }
 
     fn draw_settings(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let running = self.running.is_some();
 
-        ui.separator();
-        ui.add_enabled_ui(!running, |ui| {
-            egui::Grid::new("settings")
-                .num_columns(2)
-                .spacing([12.0, 8.0])
-                .show(ui, |ui| {
-                    ui.label("共享目录");
+        theme::card(
+            ui,
+            "服务设置",
+            Some("共享目录、账号和监听端口"),
+            |ui| {
+                ui.add_enabled_ui(!running, |ui| {
+                    theme::field_label(ui, "共享目录");
                     ui.horizontal(|ui| {
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.root_input).desired_width(280.0),
+                        let width = (ui.available_width() - 84.0).max(120.0);
+                        ui.add_sized(
+                            [width, 30.0],
+                            egui::TextEdit::singleline(&mut self.root_input),
                         );
-                        if ui.button("选择…").clicked() {
+                        if theme::secondary_button(ui, "选择…").clicked() {
                             if let Some(dir) = rfd::FileDialog::new().pick_folder() {
                                 self.root_input = dir.display().to_string();
                             }
                         }
                     });
-                    ui.end_row();
 
-                    ui.label("用户名");
-                    ui.add(egui::TextEdit::singleline(&mut self.username).desired_width(280.0));
-                    ui.end_row();
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "用户名");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.username).desired_width(f32::INFINITY),
+                    );
 
-                    ui.label("密码");
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "密码");
                     ui.horizontal(|ui| {
                         let hint = if self.has_password {
                             "留空则不修改"
+                        } else if self.allow_guest {
+                            "可留空（只读）"
                         } else {
                             "必须设置一个"
                         };
-                        ui.add(
+                        let width = (ui.available_width() - 170.0).max(110.0);
+                        ui.add_sized(
+                            [width, 30.0],
                             egui::TextEdit::singleline(&mut self.password_input)
-                                .desired_width(200.0)
                                 .password(!self.password_visible)
                                 .hint_text(hint),
                         );
                         ui.toggle_value(&mut self.password_visible, "显示");
-                        if ui.button("随机生成").clicked() {
+                        if theme::secondary_button(ui, "随机生成").clicked() {
                             self.password_input =
                                 config::generate_password(config::DEFAULT_PASSWORD_LEN);
                             self.password_visible = true;
                         }
                     });
-                    ui.end_row();
-
-                    ui.label("");
-                    ui.label(
-                        egui::RichText::new(if self.has_password {
+                    ui.add_space(4.0);
+                    theme::hint(
+                        ui,
+                        if self.has_password {
                             "密码以 Argon2 哈希保存，界面上无法回显；要改就输入新的。"
                         } else {
                             "配置里只存哈希、不存明文，所以设好之后请记牢。"
-                        })
-                        .small()
-                        .color(egui::Color32::GRAY),
+                        },
                     );
-                    ui.end_row();
+
+                    ui.add_space(6.0);
+                    ui.checkbox(
+                        &mut self.allow_guest,
+                        "允许无账号只读访问（浏览、下载）",
+                    );
+                    theme::hint(
+                        ui,
+                        if self.allow_guest {
+                            "未登录访客只能浏览和下载；上传、删除、投送仍需登录。局域网内任何人都能看到共享目录。"
+                        } else {
+                            "关闭时，所有访问都需要登录。"
+                        },
+                    );
+
+                    ui.add_space(6.0);
+                    ui.checkbox(
+                        &mut self.https,
+                        "启用 HTTPS（桌面浏览器保存到本机目录）",
+                    );
+                    theme::hint(
+                        ui,
+                        "HTTP 仍保留给手机；局域网电脑首次使用要安装并信任 certs/ca.pem。",
+                    );
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            egui::RichText::new("HTTPS 端口")
+                                .size(12.0)
+                                .color(theme::TEXT_DIM),
+                        );
+                        ui.add_enabled(
+                            self.https,
+                            egui::DragValue::new(&mut self.https_port).range(1..=65535),
+                        );
+                    });
+
+                    ui.add_space(4.0);
+                    egui::CollapsingHeader::new(
+                        egui::RichText::new("高级设置")
+                            .size(12.0)
+                            .color(theme::TEXT_DIM),
+                    )
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        ui.add_space(4.0);
+                        egui::Grid::new("advanced")
+                            .num_columns(2)
+                            .spacing([14.0, 8.0])
+                            .show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new("端口")
+                                        .size(12.0)
+                                        .color(theme::TEXT_DIM),
+                                );
+                                ui.add(egui::DragValue::new(&mut self.port).range(1..=65535));
+                                ui.end_row();
+
+                                ui.label(
+                                    egui::RichText::new("监听地址")
+                                        .size(12.0)
+                                        .color(theme::TEXT_DIM),
+                                );
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.bind).desired_width(160.0),
+                                );
+                                ui.end_row();
+
+                                ui.label("");
+                                ui.checkbox(
+                                    &mut self.advertise_mdns,
+                                    "广播 mDNS（对端可用「主机名.local」访问）",
+                                );
+                                ui.end_row();
+                            });
+                    });
                 });
 
-            ui.collapsing("高级", |ui| {
-                egui::Grid::new("advanced")
-                    .num_columns(2)
-                    .spacing([12.0, 8.0])
-                    .show(ui, |ui| {
-                        ui.label("端口");
-                        ui.add(egui::DragValue::new(&mut self.port).range(1..=65535));
-                        ui.end_row();
+                theme::divider(ui);
+                ui.horizontal(|ui| {
+                    if running {
+                        if theme::danger_button(ui, "停止服务").clicked() {
+                            self.stop();
+                        }
+                    } else if theme::primary_button(ui, "启动服务").clicked() {
+                        self.start();
+                    }
 
-                        ui.label("监听地址");
-                        ui.add(egui::TextEdit::singleline(&mut self.bind).desired_width(160.0));
-                        ui.end_row();
-
-                        ui.label("");
-                        ui.checkbox(
-                            &mut self.advertise_mdns,
-                            "广播 mDNS（对端可用「主机名.local」访问）",
-                        );
-                        ui.end_row();
+                    ui.add_enabled_ui(running, |ui| {
+                        if theme::secondary_button(ui, "打开浏览器").clicked() {
+                            self.open_browser(ctx);
+                        }
                     });
-            });
-        });
 
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if running {
-                if ui
-                    .add(egui::Button::new("停止服务").min_size([100.0, 30.0].into()))
-                    .clicked()
-                {
-                    self.stop();
+                    if running && theme::ghost_button(ui, "隐藏窗口").clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                    }
+                });
+
+                if running {
+                    ui.add_space(4.0);
+                    theme::hint(ui, "服务运行中，设置已锁定；要改先停止服务。");
                 }
-            } else if ui
-                .add(egui::Button::new("启动服务").min_size([100.0, 30.0].into()))
-                .clicked()
-            {
-                self.start();
-            }
-
-            if ui
-                .add_enabled(
-                    running,
-                    egui::Button::new("打开浏览器").min_size([100.0, 30.0].into()),
-                )
-                .clicked()
-            {
-                self.open_browser(ctx);
-            }
-
-            if running && ui.button("隐藏窗口").clicked() {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
-            }
-        });
-
-        if running {
-            ui.add_space(4.0);
-            ui.label(
-                egui::RichText::new("服务运行中，设置已锁定；要改先停止服务。")
-                    .small()
-                    .color(egui::Color32::GRAY),
-            );
-        }
+            },
+        );
     }
 
     fn draw_access(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let Some(running) = &self.running else { return };
         let urls = running.urls.clone();
+        let https_urls = running.https_urls.clone();
         let mdns_ok = running.mdns_ok;
         let primary = self.primary_url();
 
-        ui.separator();
-        ui.label(egui::RichText::new("对端访问地址").strong());
-        ui.add_space(4.0);
+        theme::card(
+            ui,
+            "扫码访问",
+            Some("手机扫码，或把地址发给同一局域网里的设备"),
+            |ui| {
+                ui.horizontal_top(|ui| {
+                    if let Some(url) = &primary {
+                        egui::Frame::new()
+                            .fill(egui::Color32::WHITE)
+                            .corner_radius(egui::CornerRadius::same(14))
+                            .inner_margin(egui::Margin::same(8))
+                            .show(ui, |ui| {
+                                draw_qr(ui, url, 150.0);
+                            });
+                        ui.add_space(16.0);
+                    }
 
-        ui.horizontal_top(|ui| {
-            if let Some(url) = &primary {
-                draw_qr(ui, url, 168.0);
-                ui.add_space(14.0);
-            }
-            ui.vertical(|ui| {
-                for (index, url) in urls.iter().enumerate() {
-                    ui.horizontal(|ui| {
-                        let label = if index == 0 {
-                            egui::RichText::new(url.clone()).monospace().weak()
-                        } else {
-                            egui::RichText::new(url.clone()).monospace()
-                        };
-                        ui.label(label);
-                        if ui.small_button("复制").clicked() {
-                            ctx.copy_text(url.clone());
+                    ui.vertical(|ui| {
+                        for (index, url) in urls.iter().enumerate() {
+                            egui::Frame::new()
+                                .fill(egui::Color32::from_rgba_unmultiplied(255, 255, 255, 8))
+                                .stroke(egui::Stroke::new(1.0, theme::BORDER))
+                                .corner_radius(egui::CornerRadius::same(9))
+                                .inner_margin(egui::Margin::symmetric(10, 6))
+                                .show(ui, |ui| {
+                                    ui.horizontal(|ui| {
+                                        let color = if index == 0 {
+                                            theme::TEXT
+                                        } else {
+                                            theme::TEXT_DIM
+                                        };
+                                        // 给「复制」留出固定宽度：长 URL 直接截断，
+                                        // 否则按钮会压在地址上。
+                                        let width = (ui.available_width() - 50.0).max(70.0);
+                                        ui.add_sized(
+                                            [width, 18.0],
+                                            egui::Label::new(
+                                                egui::RichText::new(url)
+                                                    .monospace()
+                                                    .size(11.5)
+                                                    .color(color),
+                                            )
+                                            .truncate(),
+                                        );
+                                        if ui.small_button("复制").clicked() {
+                                            ctx.copy_text(url.clone());
+                                        }
+                                    });
+                                });
+                            ui.add_space(5.0);
+                        }
+
+                        if !mdns_ok {
+                            theme::hint(ui, "mDNS 未启用，对端请用上面的 IP 地址");
+                        }
+                        ui.add_space(2.0);
+                        theme::hint(ui, "对端登录用上面设置的账号密码。");
+
+                        if !https_urls.is_empty() {
+                            ui.add_space(12.0);
+                            ui.label(
+                                egui::RichText::new("桌面浏览器 · 保存到本机目录")
+                                    .size(12.0)
+                                    .strong()
+                                    .color(theme::TEXT),
+                            );
+                            ui.add_space(4.0);
+                            for url in &https_urls {
+                                egui::Frame::new()
+                                    .fill(egui::Color32::from_rgba_unmultiplied(255, 255, 255, 8))
+                                    .stroke(egui::Stroke::new(1.0, theme::BORDER))
+                                    .corner_radius(egui::CornerRadius::same(9))
+                                    .inner_margin(egui::Margin::symmetric(10, 6))
+                                    .show(ui, |ui| {
+                                        ui.horizontal(|ui| {
+                                            let width = (ui.available_width() - 50.0).max(70.0);
+                                            ui.add_sized(
+                                                [width, 18.0],
+                                                egui::Label::new(
+                                                    egui::RichText::new(url)
+                                                        .monospace()
+                                                        .size(11.5)
+                                                        .color(theme::TEXT_DIM),
+                                                )
+                                                .truncate(),
+                                            );
+                                            if ui.small_button("复制").clicked() {
+                                                ctx.copy_text(url.clone());
+                                            }
+                                        });
+                                    });
+                                ui.add_space(5.0);
+                            }
+                            if let Ok(ca) = crate::tls::ca_path() {
+                                let ca_text = ca.display().to_string();
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                        egui::RichText::new(format!("CA 证书  {ca_text}"))
+                                            .size(10.5)
+                                            .color(theme::TEXT_FAINT),
+                                    );
+                                    if ui.small_button("复制").clicked() {
+                                        ctx.copy_text(ca_text);
+                                    }
+                                });
+                            }
+                            theme::hint(
+                                ui,
+                                "首次使用需在浏览器电脑上安装并信任 CA 证书；网页里也可以下载。",
+                            );
                         }
                     });
-                }
-                if !mdns_ok {
-                    ui.add_space(4.0);
-                    ui.label(
-                        egui::RichText::new("mDNS 未启用，对端请用上面的 IP 地址")
-                            .small()
-                            .color(egui::Color32::GRAY),
-                    );
-                }
-                ui.add_space(6.0);
-                ui.label(
-                    egui::RichText::new("手机扫码即可打开；对端登录用上面设置的账号密码。")
-                        .small()
-                        .color(egui::Color32::GRAY),
-                );
-            });
-        });
+                });
+            },
+        );
     }
 
     fn draw_clients(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
@@ -1119,73 +1380,90 @@ impl GuiApp {
             return;
         }
 
-        ui.separator();
-        ui.label(egui::RichText::new(format!("在线客户端（{}）", self.clients.len())).strong());
-
-        if self.clients.is_empty() {
-            ui.label(
-                egui::RichText::new(
-                    "让另一台电脑切到「客户端」模式并连接。浏览器客户端仍可上传/下载，但不接收投送。",
-                )
-                .small()
-                .color(egui::Color32::GRAY),
-            );
-        } else {
-            ui.label(
-                egui::RichText::new("点选接收方，然后把文件或文件夹拖进窗口任意位置。")
-                    .small()
-                    .color(egui::Color32::GRAY),
-            );
-            ui.add_space(4.0);
-
-            let mut new_target: Option<Option<String>> = None;
-            for client in &self.clients {
-                let selected = self.push_target.as_deref() == Some(client.id.as_str());
-                let label = format!(
-                    "{}  ·  {}  ·  已连接 {}",
-                    client.name,
-                    client.ip,
-                    human_duration(client.connected_at.elapsed())
-                );
-                if ui.selectable_label(selected, label).clicked() {
-                    new_target = Some(if selected {
-                        None
-                    } else {
-                        Some(client.id.clone())
+        theme::card(
+            ui,
+            &format!("在线设备 · {}", self.clients.len()),
+            Some("点选接收方，然后把文件拖进窗口任意位置"),
+            |ui| {
+                if self.clients.is_empty() {
+                    ui.horizontal(|ui| {
+                        let (rect, _) = ui
+                            .allocate_exact_size(egui::Vec2::new(34.0, 34.0), egui::Sense::hover());
+                        ui.painter().rect_filled(
+                            rect,
+                            egui::CornerRadius::same(10),
+                            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 10),
+                        );
+                        ui.painter()
+                            .circle_filled(rect.center(), 4.0, theme::ACCENT);
+                        ui.add_space(2.0);
+                        ui.vertical(|ui| {
+                            ui.label(
+                                egui::RichText::new("还没有设备连接")
+                                    .size(13.0)
+                                    .color(theme::TEXT),
+                            );
+                            theme::hint(ui, "让另一台电脑切到「客户端」模式并连接。");
+                        });
                     });
+                } else {
+                    let mut new_target: Option<Option<String>> = None;
+                    for client in &self.clients {
+                        let selected = self.push_target.as_deref() == Some(client.id.as_str());
+                        let label = format!(
+                            "{}   ·   {}   ·   已连接 {}",
+                            client.name,
+                            client.ip,
+                            human_duration(client.connected_at.elapsed())
+                        );
+                        if ui
+                            .selectable_label(selected, egui::RichText::new(label).size(12.0))
+                            .clicked()
+                        {
+                            new_target = Some(if selected {
+                                None
+                            } else {
+                                Some(client.id.clone())
+                            });
+                        }
+                    }
+                    if let Some(target) = new_target {
+                        self.push_target = target;
+                    }
                 }
-            }
-            if let Some(target) = new_target {
-                self.push_target = target;
-            }
-        }
 
-        // 拖拽悬停提示。落点坐标在系统拖拽期间不可用，所以这里只提示
-        // 当前点选的目标，不尝试判断鼠标在哪一行。
-        if ctx.input(|input| !input.raw.hovered_files.is_empty()) {
-            if self.clients.is_empty() {
-                ui.colored_label(
-                    egui::Color32::from_rgb(0xf8, 0x71, 0x71),
-                    "当前没有在线客户端，无法投送",
-                );
-            } else if let Some(id) = &self.push_target {
-                let name = self
-                    .clients
-                    .iter()
-                    .find(|c| &c.id == id)
-                    .map(|c| c.name.clone())
-                    .unwrap_or_default();
-                ui.colored_label(
-                    egui::Color32::from_rgb(0x4f, 0x8c, 0xf7),
-                    format!("松开将发送给「{name}」"),
-                );
-            } else if self.clients.len() > 1 {
-                ui.colored_label(
-                    egui::Color32::from_rgb(0xf5, 0xa6, 0x23),
-                    "松开后选择接收方",
-                );
-            }
-        }
+                // 拖拽悬停提示。落点坐标在系统拖拽期间不可用，所以这里只提示
+                // 当前点选的目标，不尝试判断鼠标在哪一行。
+                if ctx.input(|input| !input.raw.hovered_files.is_empty()) {
+                    ui.add_space(5.0);
+                    if self.clients.is_empty() {
+                        ui.label(
+                            egui::RichText::new("当前没有在线客户端，无法投送")
+                                .size(12.0)
+                                .color(theme::DANGER),
+                        );
+                    } else if let Some(id) = &self.push_target {
+                        let name = self
+                            .clients
+                            .iter()
+                            .find(|c| &c.id == id)
+                            .map(|c| c.name.clone())
+                            .unwrap_or_default();
+                        ui.label(
+                            egui::RichText::new(format!("松开将发送给「{name}」"))
+                                .size(12.0)
+                                .color(theme::ACCENT),
+                        );
+                    } else if self.clients.len() > 1 {
+                        ui.label(
+                            egui::RichText::new("松开后选择接收方")
+                                .size(12.0)
+                                .color(theme::WARN),
+                        );
+                    }
+                }
+            },
+        );
     }
 
     fn draw_receiver_picker(&mut self, ctx: &egui::Context) {
@@ -1233,193 +1511,191 @@ impl GuiApp {
             ClientStatus::Connecting | ClientStatus::Connected | ClientStatus::Reconnecting { .. }
         );
 
-        ui.separator();
-        ui.label(egui::RichText::new("连接到服务端").strong());
-        ui.label(
-            egui::RichText::new("连接后自动接收投送，文件直接保存到接收目录，不需要逐次确认。")
-                .small()
-                .color(egui::Color32::GRAY),
-        );
-        ui.add_space(4.0);
-
-        ui.add_enabled_ui(!connected, |ui| {
-            egui::Grid::new("client_settings")
-                .num_columns(2)
-                .spacing([12.0, 8.0])
-                .show(ui, |ui| {
-                    ui.label("服务器地址");
+        theme::card(
+            ui,
+            "连接设置",
+            Some("连接后自动接收投送，文件直接保存到接收目录"),
+            |ui| {
+                ui.add_enabled_ui(!connected, |ui| {
+                    theme::field_label(ui, "服务器地址");
                     ui.add(
                         egui::TextEdit::singleline(&mut self.client_server_url)
-                            .desired_width(280.0)
+                            .desired_width(f32::INFINITY)
                             .hint_text("192.168.1.5:8080"),
                     );
-                    ui.end_row();
 
-                    ui.label("用户名");
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "用户名");
                     ui.add(
-                        egui::TextEdit::singleline(&mut self.client_username).desired_width(280.0),
+                        egui::TextEdit::singleline(&mut self.client_username)
+                            .desired_width(f32::INFINITY),
                     );
-                    ui.end_row();
 
-                    ui.label("密码");
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "密码");
                     ui.horizontal(|ui| {
-                        ui.add(
+                        let width = (ui.available_width() - 64.0).max(110.0);
+                        ui.add_sized(
+                            [width, 30.0],
                             egui::TextEdit::singleline(&mut self.client_password)
-                                .desired_width(200.0)
                                 .password(!self.client_password_visible)
                                 .hint_text("不保存，重连时需重新输入"),
                         );
                         ui.toggle_value(&mut self.client_password_visible, "显示");
                     });
-                    ui.end_row();
 
-                    ui.label("设备名称");
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "设备名称");
                     ui.add(
                         egui::TextEdit::singleline(&mut self.client_display_name)
-                            .desired_width(280.0),
+                            .desired_width(f32::INFINITY),
                     );
-                    ui.end_row();
+                    ui.add_space(3.0);
+                    theme::hint(ui, "设备名称会显示在服务端的投送列表里。");
 
-                    ui.label("接收目录");
+                    ui.add_space(8.0);
+                    theme::field_label(ui, "接收目录");
                     ui.horizontal(|ui| {
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.client_receive_dir_input)
-                                .desired_width(280.0),
+                        let width = (ui.available_width() - 84.0).max(120.0);
+                        ui.add_sized(
+                            [width, 30.0],
+                            egui::TextEdit::singleline(&mut self.client_receive_dir_input),
                         );
-                        if ui.button("选择…").clicked() {
+                        if theme::secondary_button(ui, "选择…").clicked() {
                             if let Some(dir) = rfd::FileDialog::new().pick_folder() {
                                 self.client_receive_dir_input = dir.display().to_string();
                             }
                         }
                     });
-                    ui.end_row();
-
-                    ui.label("");
-                    ui.label(
-                        egui::RichText::new("设备名称会显示在服务端的投送列表里。")
-                            .small()
-                            .color(egui::Color32::GRAY),
-                    );
-                    ui.end_row();
                 });
-        });
 
-        ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if connected {
-                if ui
-                    .add(egui::Button::new("断开").min_size([100.0, 30.0].into()))
-                    .clicked()
-                {
-                    self.client.disconnect();
-                    self.client_status = ClientStatus::Disconnected;
-                }
-            } else if ui
-                .add(egui::Button::new("连接").min_size([100.0, 30.0].into()))
-                .clicked()
-            {
-                self.connect_client();
-            }
+                theme::divider(ui);
+                ui.horizontal(|ui| {
+                    if connected {
+                        if theme::danger_button(ui, "断开").clicked() {
+                            self.client.disconnect();
+                            self.client_status = ClientStatus::Disconnected;
+                        }
+                    } else if theme::primary_button(ui, "连接").clicked() {
+                        self.connect_client();
+                    }
 
-            let (text, color) = match &self.client_status {
-                ClientStatus::Connecting => (
-                    "连接中…".to_string(),
-                    egui::Color32::from_rgb(0xf5, 0xa6, 0x23),
-                ),
-                ClientStatus::Connected => (
-                    "● 已连接，等待投送".to_string(),
-                    egui::Color32::from_rgb(0x4a, 0xde, 0x80),
-                ),
-                ClientStatus::Reconnecting { attempt, error } => (
-                    format!("重连中（第 {attempt} 次）：{error}"),
-                    egui::Color32::from_rgb(0xf5, 0xa6, 0x23),
-                ),
-                ClientStatus::Disconnected => ("未连接".to_string(), egui::Color32::GRAY),
-                ClientStatus::Failed(error) => (
-                    format!("连接失败：{error}"),
-                    egui::Color32::from_rgb(0xf8, 0x71, 0x71),
-                ),
-            };
-            ui.colored_label(color, text);
-        });
+                    let (text, color) = match &self.client_status {
+                        ClientStatus::Connecting => ("连接中…".to_string(), theme::WARN),
+                        ClientStatus::Connected => ("● 已连接，等待投送".to_string(), theme::OK),
+                        ClientStatus::Reconnecting { attempt, error } => {
+                            (format!("重连中（第 {attempt} 次）：{error}"), theme::WARN)
+                        }
+                        ClientStatus::Disconnected => ("未连接".to_string(), theme::TEXT_FAINT),
+                        ClientStatus::Failed(error) => {
+                            (format!("连接失败：{error}"), theme::DANGER)
+                        }
+                    };
+                    ui.label(egui::RichText::new(text).size(12.0).color(color));
+                });
+            },
+        );
     }
 
     fn draw_activity(&mut self, ui: &mut egui::Ui) {
-        if self.activity.is_empty() {
-            return;
-        }
-        ui.separator();
-        ui.label(egui::RichText::new("传输活动").strong());
-        ui.add_space(4.0);
+        theme::card(ui, "传输活动", Some("最近 8 条"), |ui| {
+            if self.activity.is_empty() {
+                theme::hint(ui, "还没有传输记录。");
+                return;
+            }
 
-        for row in self.activity.iter().rev().take(8) {
-            ui.horizontal(|ui| {
-                let (mark, color) = match &row.state {
-                    ActivityState::Running => (
-                        if row.outgoing { "↑" } else { "↓" },
-                        egui::Color32::from_rgb(0x4f, 0x8c, 0xf7),
-                    ),
-                    ActivityState::Done => ("✓", egui::Color32::from_rgb(0x4a, 0xde, 0x80)),
-                    ActivityState::Failed(_) => ("✕", egui::Color32::from_rgb(0xf8, 0x71, 0x71)),
-                };
-                ui.colored_label(color, mark);
+            for index in 0..self.activity.len().min(8) {
+                let row = &self.activity[self.activity.len() - 1 - index];
+                ui.horizontal(|ui| {
+                    let (mark, color) = match &row.state {
+                        ActivityState::Running => {
+                            (if row.outgoing { "↑" } else { "↓" }, theme::ACCENT)
+                        }
+                        ActivityState::Done => ("✓", theme::OK),
+                        ActivityState::Failed(_) => ("✕", theme::DANGER),
+                    };
+                    ui.label(egui::RichText::new(mark).size(13.0).strong().color(color));
 
-                let label = match &row.peer {
-                    Some(peer) if row.outgoing => format!("{} → {}", row.name, peer),
-                    Some(peer) => format!("{} ← {}", row.name, peer),
-                    None => row.name.clone(),
-                };
-                ui.label(truncate(&label, 40));
+                    let label = match &row.peer {
+                        Some(peer) if row.outgoing => format!("{} → {}", row.name, peer),
+                        Some(peer) => format!("{} ← {}", row.name, peer),
+                        None => row.name.clone(),
+                    };
+                    ui.add(
+                        egui::Label::new(egui::RichText::new(label).size(12.0).color(theme::TEXT))
+                            .truncate(),
+                    );
 
-                match &row.state {
-                    ActivityState::Failed(error) => {
-                        ui.colored_label(
-                            egui::Color32::from_rgb(0xf8, 0x71, 0x71),
-                            truncate(error, 40),
-                        );
-                    }
-                    ActivityState::Done => {
-                        ui.label(
-                            egui::RichText::new(format!("完成 · {}", human_size(row.total)))
-                                .small()
-                                .color(egui::Color32::GRAY),
-                        );
-                    }
-                    ActivityState::Running => {
-                        let frac = if row.total > 0 {
-                            row.done as f32 / row.total as f32
-                        } else {
-                            0.0
-                        };
-                        ui.add(
-                            egui::ProgressBar::new(frac)
-                                .desired_width(150.0)
-                                .text(format!(
-                                    "{} / {}",
-                                    human_size(row.done),
-                                    human_size(row.total)
-                                )),
-                        );
-                    }
-                }
-            });
-        }
+                    ui.with_layout(
+                        egui::Layout::right_to_left(egui::Align::Center),
+                        |ui| match &row.state {
+                            ActivityState::Failed(error) => {
+                                ui.label(
+                                    egui::RichText::new(truncate(error, 40))
+                                        .size(11.5)
+                                        .color(theme::DANGER),
+                                );
+                            }
+                            ActivityState::Done => {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "完成 · {}",
+                                        human_size(row.total)
+                                    ))
+                                    .size(11.0)
+                                    .color(theme::TEXT_FAINT),
+                                );
+                            }
+                            ActivityState::Running => {
+                                let frac = if row.total > 0 {
+                                    row.done as f32 / row.total as f32
+                                } else {
+                                    0.0
+                                };
+                                ui.add(
+                                    egui::ProgressBar::new(frac)
+                                        .desired_width(130.0)
+                                        .fill(theme::ACCENT)
+                                        .corner_radius(4)
+                                        .text(format!(
+                                            "{} / {}",
+                                            human_size(row.done),
+                                            human_size(row.total)
+                                        )),
+                                );
+                            }
+                        },
+                    );
+                });
+            }
+        });
     }
 
     fn draw_log(&mut self, ui: &mut egui::Ui) {
-        ui.separator();
-        egui::CollapsingHeader::new(format!("日志（{} 条）", self.log.len()))
-            .default_open(false)
-            .show(ui, |ui| {
+        theme::card(
+            ui,
+            "运行日志",
+            Some(&format!("{} 条", self.log.len())),
+            |ui| {
+                if self.log.is_empty() {
+                    theme::hint(ui, "暂无日志。");
+                    return;
+                }
                 egui::ScrollArea::vertical()
-                    .max_height(180.0)
+                    .max_height(150.0)
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
                         for line in &self.log {
-                            ui.label(egui::RichText::new(line).monospace().small());
+                            ui.label(
+                                egui::RichText::new(line)
+                                    .monospace()
+                                    .size(11.0)
+                                    .color(theme::TEXT_DIM),
+                            );
                         }
                     });
-            });
+            },
+        );
     }
 }
 

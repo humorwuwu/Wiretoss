@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::auth::{require_csrf, AuthUser};
+use crate::auth::{require_csrf, AuthUser, WriteUser};
 use crate::error::{AppError, AppResult};
 use crate::events::TransferEvent;
 use crate::state::AppState;
@@ -141,6 +141,10 @@ fn normalize_components(rel: &str) -> AppResult<Vec<String>> {
                 parts.push(p.to_string());
             }
         }
+    }
+    // `.wiretoss` 是上传中转目录；列表里已经隐藏，但直接构造 path 不能绕过。
+    if parts.first().is_some_and(|part| part == ".wiretoss") {
+        return Err(AppError::Forbidden);
     }
     Ok(parts)
 }
@@ -302,6 +306,92 @@ pub struct ListQuery {
     pub path: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct TreeNode {
+    /// 共享根相对的**真实**路径，下载时必须用它。
+    pub path: String,
+    pub name: String,
+    /// 仅供显示；本地保存时用它作为文件名/目录名。
+    pub display_name: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub children: Vec<TreeNode>,
+}
+
+const MAX_TREE_NODES: usize = 50_000;
+const MAX_TREE_DEPTH: usize = 64;
+
+/// 返回一个目录的递归树。浏览器保存到本机目录时用它来保留目录结构；
+/// 真正下载每个文件仍走 `/api/download`，树里不包含内容。
+pub async fn tree(
+    State(state): State<Arc<AppState>>,
+    _user: AuthUser,
+    Query(q): Query<ListQuery>,
+) -> AppResult<Json<Value>> {
+    let dir = state.root.resolve_existing(&q.path)?;
+    if !std::fs::symlink_metadata(&dir)?.is_dir() {
+        return Err(AppError::BadRequest("只能列出文件夹".into()));
+    }
+
+    let mut count = 0usize;
+    let entries = build_tree_children(&state.root, &q.path, 0, &mut count)?;
+    Ok(Json(json!({ "path": q.path, "entries": entries })))
+}
+
+fn build_tree_children(
+    root: &SafeRoot,
+    rel: &str,
+    depth: usize,
+    count: &mut usize,
+) -> AppResult<Vec<TreeNode>> {
+    if depth > MAX_TREE_DEPTH {
+        return Err(AppError::BadRequest("目录层级过深，无法保存到本机".into()));
+    }
+
+    let mut out = Vec::new();
+    for entry in list_dir(root, rel)? {
+        if entry.restricted {
+            continue;
+        }
+        let child_rel = if rel.is_empty() {
+            entry.name.clone()
+        } else {
+            format!("{rel}/{}", entry.name)
+        };
+
+        // 软链接不展开：可能指向目录外，也可能形成环。下载逻辑仍可单独处理文件。
+        let raw_path = root.path().join(&child_rel);
+        if std::fs::symlink_metadata(&raw_path)
+            .map(|meta| meta.file_type().is_symlink())
+            .unwrap_or(true)
+        {
+            continue;
+        }
+
+        *count += 1;
+        if *count > MAX_TREE_NODES {
+            return Err(AppError::BadRequest(
+                "目录内文件太多，无法一次保存到本机".into(),
+            ));
+        }
+
+        let children = if entry.is_dir {
+            build_tree_children(root, &child_rel, depth + 1, count)?
+        } else {
+            Vec::new()
+        };
+        out.push(TreeNode {
+            path: child_rel,
+            name: entry.name,
+            display_name: entry.display_name,
+            is_dir: entry.is_dir,
+            size: entry.size,
+            children,
+        });
+    }
+    Ok(out)
+}
+
 pub async fn list(
     State(state): State<Arc<AppState>>,
     _user: AuthUser,
@@ -320,7 +410,7 @@ pub struct MkdirRequest {
 
 pub async fn mkdir(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     Json(req): Json<MkdirRequest>,
 ) -> AppResult<Json<Value>> {
@@ -348,7 +438,7 @@ pub struct DeleteRequest {
 
 pub async fn delete(
     State(state): State<Arc<AppState>>,
-    _user: AuthUser,
+    _user: WriteUser,
     headers: HeaderMap,
     Json(req): Json<DeleteRequest>,
 ) -> AppResult<Json<Value>> {

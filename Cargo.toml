@@ -1,6 +1,6 @@
 [package]
 name = "wiretoss"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Mac <-> Windows 局域网文件快传，浏览器即客户端"
 license = "MIT"
@@ -38,6 +38,14 @@ hex = "0.4"
 uuid = { version = "1", features = ["v4"] }
 
 directories = "6"
+# 监视共享目录的外部变化（Finder / 资源管理器 / 其他程序），
+# 让已经打开的网页能通过 SSE 自动刷新。
+notify = "8.2"
+# 可选的 HTTPS：桌面浏览器要调用 File System Access API 写本机目录，
+# 页面必须处于安全上下文（HTTPS 或 localhost）。HTTP 监听继续保留给手机。
+axum-server = { version = "0.8", default-features = false, features = ["tls-rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rcgen = "0.14"
 mime_guess = "2"
 if-addrs = "0.15"
 hostname = "0.4"
